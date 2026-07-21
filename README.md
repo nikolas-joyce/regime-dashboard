@@ -4,7 +4,7 @@ Bayesian market regime classifier (direction x volatility, 6 cells) with next-da
 and an options structure recommendation per cell. Full design doc and validation history:
 `research/regime-dashboard-plan.md` (mirrored from the Second Brain vault).
 
-## Status: Phase 2 CLOSED (2026-07-22)
+## Status: Phase 3 in progress (2026-07-22)
 
 - **Phase 0 (validation gate): CLOSED.** The market-layer model (HMM direction engine,
   curve-conditioned drift model, vol layer, smoothing, forecast) is live-validated on SPY
@@ -47,7 +47,37 @@ and an options structure recommendation per cell. Full design doc and validation
   block above `structure_matrix` in `config.yaml` for the rationale on each. No
   `structure_matrix` values changed; this was a documentation/audit-trail resolution,
   not a recalibration.
-- **Phase 3:** Streamlit app -- not started
+- **Phase 3: IN PROGRESS.** `app/app.py` (+ `app/data.py`, `app/analytics.py`) built
+  2026-07-22, smoke-tested clean via `streamlit.testing.v1.AppTest` against the real
+  repo data (0 exceptions across every tab, including the drill-down sub-tabs). 17 new
+  unit tests in `tests/test_app_analytics.py` (transition matrix, regime runs, forward
+  returns, conditional density, structure pricing, call-history log) -- 65 total passing.
+  One real design bug caught by the AppTest run: the "Structure" drill-down sub-tab fired
+  a live yfinance chain fetch unconditionally on ticker selection (no button gate),
+  violating the plan's "client-triggered only" live-fetch design -- fixed to require an
+  explicit click like the other three drill-down sub-tabs.
+  - [x] Market regime header + 3x2 posterior grid + HMM-vs-drift agreement badge + days-in-regime counter
+  - [x] Transition panel -- empirical (not model-forecast) next-day probabilities +
+        exit-probability amber alert, computed live from committed-regime history
+        (the pipeline doesn't persist a separate forward transition forecast)
+  - [x] Names table -- sortable/filterable by cell and structure
+  - [x] Drill-down -- regime ribbon, live concrete-strikes pricing (reuses
+        pipeline/matrix.py's validated bs_price/strike_from_delta), call-history log,
+        empirical forecast-density panel (TEST 1c methodology, empirical-only per the
+        2026-07-21 design decision)
+  - [x] History tab -- regime duration distribution + full run log
+  - [x] Diagnostics tab -- data freshness, HMM diagnostics, model-agreement chart
+  - [ ] Standalone/overlay toggle on the names table -- NOT built. Needs the pre-gating
+        per-name tilt/vol series persisted per date; run_nightly.py currently only
+        writes the post-gating cell. Flagged in-app rather than faked.
+  - [ ] Market internals strip (VIX complex, HY OAS, put/call, SPY ribbon chart) --
+        NOT built. Raw price/VIX/HY series aren't persisted by the pipeline (only model
+        outputs); would need either a new persisted series or a live fetch.
+  - [ ] Deploy to Streamlit Community Cloud -- not yet done
+  - [ ] Live-fetch code paths (price history, option chains) untestable in this sandbox
+        (egress-blocked) -- verified logic via AppTest with all live-fetch paths button-
+        gated (so the smoke test never has to cross the network); real end-to-end
+        verification needs a live run, same pattern as every other pipeline component.
 
 ## Validation history (important -- read before changing the model)
 
@@ -86,7 +116,8 @@ window to contaminate in the first place.
 pip install -r requirements.txt        # prod (nightly Action)
 pip install -r requirements-dev.txt    # prod + pytest, for running tests/
 python -m pipeline.run_nightly         # requires FRED_API_KEY env var
-pytest tests/                          # 48 tests, ~20s
+pytest tests/                          # 65 tests, ~25s
+streamlit run app/app.py               # run from repo root so pipeline/ and config.yaml resolve
 ```
 
 ## Repo layout
@@ -97,8 +128,15 @@ pipeline/
   data_pull.py           # yfinance/Stooq/vix-utils/FRED acquisition
   model.py               # direction engine, vol layer, drift model, smoothing
   matrix.py              # regime -> structure lookup + BS pricing
+  tilt.py                # per-name RS tilt + market-gating
+  iv_calc.py              # IV snapshot calc (expiry selection, BS delta, ATM IV, 25d skew)
   run_nightly.py          # orchestration entrypoint
+app/
+  data.py                # precomputed readers (cached) + live yfinance fetch (drill-down only)
+  analytics.py            # transition matrix, regime runs, forecast density, structure pricing
+  app.py                  # Streamlit UI -- entrypoint
 research/                 # validated notebooks + the full design/validation doc
+tests/                    # pytest -- pipeline + app logic, 65 tests
 data/, output/            # written by run_nightly.py, committed by the nightly Action
 .github/workflows/        # nightly.yml
 ```
