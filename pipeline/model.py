@@ -168,17 +168,25 @@ def curve_conditioned_drift_posterior(
 
     for i in range(min_train, len(slope_z)):
         X, y = X_all[:i], y_all[:i]
-        ok = ~np.isnan(y)
+        # Mask must exclude NaN in X (slope_z) as well as y (forward return) -- if VX1-VX3
+        # curve history doesn't reach as far back as the return history, leading slope_z
+        # rows are NaN. Masking on y alone lets those rows into X.T @ X / Vn, which then
+        # stay NaN for every later i once contaminated (this silently zeroed out
+        # p_up/beta_slope for the whole series in the first live Phase 1 run --
+        # see regime-dashboard-plan.md section 7b addendum).
+        ok = ~np.isnan(y) & ~np.isnan(X[:, 1])
         X, y = X[ok], y[ok]
         if len(y) < 100:
             continue
+        x0 = X_all[i]
+        if np.isnan(x0[1]):
+            continue  # can't predict today's regressor is itself NaN (curve data lagging)
         V0inv = np.eye(2) * 1e-4
         Vn = np.linalg.inv(V0inv + X.T @ X)
         bn = Vn @ (X.T @ y)
         a_n = 1.0 + len(y) / 2
         b_n = 1.0 + 0.5 * (y @ y - bn @ np.linalg.inv(Vn) @ bn)
         s2 = b_n / a_n
-        x0 = X_all[i]
         mu_pred = x0 @ bn
         var_pred = s2 * (1 + x0 @ Vn @ x0)
         p_up.iloc[i] = 1 - student_t.cdf(0, df=2 * a_n, loc=mu_pred, scale=np.sqrt(var_pred))
