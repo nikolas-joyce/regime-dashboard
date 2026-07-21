@@ -1,0 +1,28 @@
+{
+  "as_of": "2026-05-22",
+  "data_source": "yfinance",
+  "market_regime": "bull_lo",
+  "posterior": 0.9274289447966368,
+  "hmm_diagnostics": {
+    "n_refit": 74,
+    "n_below_z_thresh": 74,
+    "median_z_separation": 0.8675492281840429
+  },
+  "drift_p_up_latest": null,
+  "curve_beta_latest": null,
+  "recommendation": {
+    "structure": "bull_call_debit_spread",
+    "legs": [
+      {
+        "cp": "call",
+        "delta": 0.55,
+        "pos": 1
+      },
+      {
+        "cp": "call",
+        "delta": 0.3,
+        "pos": -1
+      }
+    ]
+  }
+}
