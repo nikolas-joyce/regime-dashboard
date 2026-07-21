@@ -103,4 +103,15 @@ def build_feature_frame(prices: pd.DataFrame, vx: pd.DataFrame) -> pd.DataFrame:
     feat["slope"] = (vx_aligned["VX3"] - vx_aligned["VX1"]) / vx_aligned["VX1"]
     feat["slope_z"] = (feat["slope"] - feat["slope"].rolling(252).mean()) / feat["slope"].rolling(252).std()
     feat["backwardation"] = (feat["slope"] < 0).astype(float)
-    return feat.dropna(subset=["ret", "rv20"])
+    # Match the validated notebook's guarantee (research/regime_dashboard_step0_validation.ipynb,
+    # feature-construction cell): drop any row missing slope_z/vix_pct/rv_pct, not just ret/rv20.
+    # The notebook's raw price+VX-curve frame comes from an INNER JOIN (px.join(vx, how="inner")),
+    # so it never has a leading-NaN-slope window to begin with; ffill() here can't back-fill dates
+    # before VX curve history starts, so without this the model layer gets handed rows where
+    # slope_z is NaN. That silently broke two things in the first live Phase 1 run: an all-NaN
+    # cp row crashing commit_regime's idxmax, and NaN contaminating the drift model's regression
+    # matrix for the entire series (see model.py fixes, same date). Fixing it at the source here
+    # is the correct match to validated methodology; the two downstream fixes remain as
+    # defensive belt-and-suspenders, not the primary guard.
+    subset = [c for c in ["ret", "rv20", "slope_z", "rv_pct", "vix_pct"] if c in feat.columns]
+    return feat.dropna(subset=subset)
