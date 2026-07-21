@@ -68,6 +68,27 @@ def run() -> dict:
         cp[cells[2 * i]] = dirpost[d] * p_high
         cp[cells[2 * i + 1]] = dirpost[d] * (1 - p_high)
 
+    # dirpost.dropna() (model.py) only guarantees the direction posterior itself is valid --
+    # it says nothing about vix_pct/backwardation/rv_pct/slope_z for those same dates. When
+    # the VX1-VX3 curve history (vix_utils) doesn't reach as far back as SPY's return history,
+    # p_high is NaN for those early dates, which wipes out every column of that cp row (all six
+    # cells multiply by the same p_high or 1-p_high) and idxmax(axis=1) raises on an all-NaN
+    # row. Drop those rows here rather than in commit_regime -- the validated model.py logic
+    # assumes it's only ever handed complete rows; enforcing that is this orchestration layer's
+    # job, not model.py's.
+    n_before = len(cp)
+    cp = cp.dropna(how="any")
+    n_dropped = n_before - len(cp)
+    if n_dropped:
+        print(f"[run_nightly] dropped {n_dropped}/{n_before} cell_posterior rows with "
+              f"NaN inputs (likely VX curve history not covering that far back)")
+    if cp.empty:
+        raise RuntimeError(
+            "cell_posterior is empty after dropping NaN rows -- vol-layer inputs "
+            "(vix_pct/backwardation/rv_pct) never aligned with the direction posterior. "
+            "Check VX curve / VIX data pull coverage."
+        )
+
     sm = cfg["smoothing"]
     committed = commit_regime(cp, sm["commit_p"], sm["commit_days"], sm["min_dwell"])
 
