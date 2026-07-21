@@ -2,14 +2,14 @@
   "as_of": "2026-05-22",
   "data_source": "yfinance",
   "market_regime": "bull_lo",
-  "posterior": 0.9250816795064434,
+  "posterior": 0.9250812770785437,
   "hmm_diagnostics": {
     "n_refit": 58,
     "n_below_z_thresh": 58,
-    "median_z_separation": 0.8617422822602777
+    "median_z_separation": 0.8617587695700113
   },
-  "drift_p_up_latest": 0.542256831084821,
-  "curve_beta_latest": 0.0004577144811463138,
+  "drift_p_up_latest": 0.5422569045652479,
+  "curve_beta_latest": 0.00045771672772416223,
   "recommendation": {
     "structure": "bull_call_debit_spread",
     "legs": [
@@ -24,5 +24,395 @@
         "pos": -1
       }
     ]
+  },
+  "per_name": {
+    "AAPL": {
+      "as_of": "2026-05-22",
+      "cell": "bull_lo",
+      "rs_z_short": null,
+      "rs_z_long": null,
+      "recommendation": {
+        "structure": "bull_call_debit_spread",
+        "legs": [
+          {
+            "cp": "call",
+            "delta": 0.55,
+            "pos": 1
+          },
+          {
+            "cp": "call",
+            "delta": 0.3,
+            "pos": -1
+          }
+        ]
+      }
+    },
+    "MSFT": {
+      "as_of": "2026-05-22",
+      "cell": "neut_hi",
+      "rs_z_short": null,
+      "rs_z_long": null,
+      "recommendation": {
+        "structure": "wide_bull_put_credit_spread",
+        "legs": [
+          {
+            "cp": "put",
+            "delta": -0.2,
+            "pos": -1
+          },
+          {
+            "cp": "put",
+            "delta": -0.1,
+            "pos": 1
+          }
+        ]
+      }
+    },
+    "NVDA": {
+      "as_of": "2026-05-22",
+      "cell": "neut_hi",
+      "rs_z_short": null,
+      "rs_z_long": null,
+      "recommendation": {
+        "structure": "wide_bull_put_credit_spread",
+        "legs": [
+          {
+            "cp": "put",
+            "delta": -0.2,
+            "pos": -1
+          },
+          {
+            "cp": "put",
+            "delta": -0.1,
+            "pos": 1
+          }
+        ]
+      }
+    },
+    "AMZN": {
+      "as_of": "2026-05-22",
+      "cell": "bull_lo",
+      "rs_z_short": null,
+      "rs_z_long": null,
+      "recommendation": {
+        "structure": "bull_call_debit_spread",
+        "legs": [
+          {
+            "cp": "call",
+            "delta": 0.55,
+            "pos": 1
+          },
+          {
+            "cp": "call",
+            "delta": 0.3,
+            "pos": -1
+          }
+        ]
+      }
+    },
+    "GOOGL": {
+      "as_of": "2026-05-22",
+      "cell": "neut_hi",
+      "rs_z_short": null,
+      "rs_z_long": null,
+      "recommendation": {
+        "structure": "wide_bull_put_credit_spread",
+        "legs": [
+          {
+            "cp": "put",
+            "delta": -0.2,
+            "pos": -1
+          },
+          {
+            "cp": "put",
+            "delta": -0.1,
+            "pos": 1
+          }
+        ]
+      }
+    },
+    "META": {
+      "as_of": "2026-05-22",
+      "cell": "neut_lo",
+      "rs_z_short": null,
+      "rs_z_long": null,
+      "recommendation": {
+        "structure": "no_trade",
+        "legs": []
+      }
+    },
+    "JPM": {
+      "as_of": "2026-05-22",
+      "cell": "neut_hi",
+      "rs_z_short": null,
+      "rs_z_long": null,
+      "recommendation": {
+        "structure": "wide_bull_put_credit_spread",
+        "legs": [
+          {
+            "cp": "put",
+            "delta": -0.2,
+            "pos": -1
+          },
+          {
+            "cp": "put",
+            "delta": -0.1,
+            "pos": 1
+          }
+        ]
+      }
+    },
+    "BAC": {
+      "as_of": "2026-05-22",
+      "cell": "neut_lo",
+      "rs_z_short": null,
+      "rs_z_long": null,
+      "recommendation": {
+        "structure": "no_trade",
+        "legs": []
+      }
+    },
+    "XOM": {
+      "as_of": "2026-05-22",
+      "cell": "neut_hi",
+      "rs_z_short": null,
+      "rs_z_long": null,
+      "recommendation": {
+        "structure": "wide_bull_put_credit_spread",
+        "legs": [
+          {
+            "cp": "put",
+            "delta": -0.2,
+            "pos": -1
+          },
+          {
+            "cp": "put",
+            "delta": -0.1,
+            "pos": 1
+          }
+        ]
+      }
+    },
+    "CVX": {
+      "as_of": "2026-05-22",
+      "cell": "neut_hi",
+      "rs_z_short": null,
+      "rs_z_long": null,
+      "recommendation": {
+        "structure": "wide_bull_put_credit_spread",
+        "legs": [
+          {
+            "cp": "put",
+            "delta": -0.2,
+            "pos": -1
+          },
+          {
+            "cp": "put",
+            "delta": -0.1,
+            "pos": 1
+          }
+        ]
+      }
+    },
+    "UNH": {
+      "as_of": "2026-05-22",
+      "cell": "bull_lo",
+      "rs_z_short": null,
+      "rs_z_long": null,
+      "recommendation": {
+        "structure": "bull_call_debit_spread",
+        "legs": [
+          {
+            "cp": "call",
+            "delta": 0.55,
+            "pos": 1
+          },
+          {
+            "cp": "call",
+            "delta": 0.3,
+            "pos": -1
+          }
+        ]
+      }
+    },
+    "JNJ": {
+      "as_of": "2026-05-22",
+      "cell": "neut_hi",
+      "rs_z_short": null,
+      "rs_z_long": null,
+      "recommendation": {
+        "structure": "wide_bull_put_credit_spread",
+        "legs": [
+          {
+            "cp": "put",
+            "delta": -0.2,
+            "pos": -1
+          },
+          {
+            "cp": "put",
+            "delta": -0.1,
+            "pos": 1
+          }
+        ]
+      }
+    },
+    "V": {
+      "as_of": "2026-05-22",
+      "cell": "bull_hi",
+      "rs_z_short": null,
+      "rs_z_long": null,
+      "recommendation": {
+        "structure": "short_put",
+        "legs": [
+          {
+            "cp": "put",
+            "delta": -0.3,
+            "pos": -1
+          }
+        ]
+      }
+    },
+    "MA": {
+      "as_of": "2026-05-22",
+      "cell": "neut_hi",
+      "rs_z_short": null,
+      "rs_z_long": null,
+      "recommendation": {
+        "structure": "wide_bull_put_credit_spread",
+        "legs": [
+          {
+            "cp": "put",
+            "delta": -0.2,
+            "pos": -1
+          },
+          {
+            "cp": "put",
+            "delta": -0.1,
+            "pos": 1
+          }
+        ]
+      }
+    },
+    "PG": {
+      "as_of": "2026-05-22",
+      "cell": "neut_hi",
+      "rs_z_short": null,
+      "rs_z_long": null,
+      "recommendation": {
+        "structure": "wide_bull_put_credit_spread",
+        "legs": [
+          {
+            "cp": "put",
+            "delta": -0.2,
+            "pos": -1
+          },
+          {
+            "cp": "put",
+            "delta": -0.1,
+            "pos": 1
+          }
+        ]
+      }
+    },
+    "KO": {
+      "as_of": "2026-05-22",
+      "cell": "neut_hi",
+      "rs_z_short": null,
+      "rs_z_long": null,
+      "recommendation": {
+        "structure": "wide_bull_put_credit_spread",
+        "legs": [
+          {
+            "cp": "put",
+            "delta": -0.2,
+            "pos": -1
+          },
+          {
+            "cp": "put",
+            "delta": -0.1,
+            "pos": 1
+          }
+        ]
+      }
+    },
+    "HD": {
+      "as_of": "2026-05-22",
+      "cell": "neut_hi",
+      "rs_z_short": null,
+      "rs_z_long": null,
+      "recommendation": {
+        "structure": "wide_bull_put_credit_spread",
+        "legs": [
+          {
+            "cp": "put",
+            "delta": -0.2,
+            "pos": -1
+          },
+          {
+            "cp": "put",
+            "delta": -0.1,
+            "pos": 1
+          }
+        ]
+      }
+    },
+    "DIS": {
+      "as_of": "2026-05-22",
+      "cell": "neut_hi",
+      "rs_z_short": null,
+      "rs_z_long": null,
+      "recommendation": {
+        "structure": "wide_bull_put_credit_spread",
+        "legs": [
+          {
+            "cp": "put",
+            "delta": -0.2,
+            "pos": -1
+          },
+          {
+            "cp": "put",
+            "delta": -0.1,
+            "pos": 1
+          }
+        ]
+      }
+    },
+    "CSCO": {
+      "as_of": "2026-05-22",
+      "cell": "bull_hi",
+      "rs_z_short": null,
+      "rs_z_long": null,
+      "recommendation": {
+        "structure": "short_put",
+        "legs": [
+          {
+            "cp": "put",
+            "delta": -0.3,
+            "pos": -1
+          }
+        ]
+      }
+    },
+    "WMT": {
+      "as_of": "2026-05-22",
+      "cell": "neut_hi",
+      "rs_z_short": null,
+      "rs_z_long": null,
+      "recommendation": {
+        "structure": "wide_bull_put_credit_spread",
+        "legs": [
+          {
+            "cp": "put",
+            "delta": -0.2,
+            "pos": -1
+          },
+          {
+            "cp": "put",
+            "delta": -0.1,
+            "pos": 1
+          }
+        ]
+      }
+    }
   }
 }
