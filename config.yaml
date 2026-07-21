@@ -172,15 +172,29 @@ structure_matrix:
     moderate_confidence: {structure: "no_trade", legs: []}
     low_confidence: {structure: "no_trade", legs: []}
 
-# OPEN ITEMS -- flagged in the plan, not yet resolved by Nikolas:
-#   (a) short_put only at high confidence, or acceptable at moderate with half size?
-#   (b) neut_hi as bull-put rather than symmetric premium sale -- intentional long bias?
-#   (c) delta targets vs. putspread v3 conventions
-open_calibration_items:
-  - "bull_hi short_put confidence threshold"
-  - "neut_hi long bias intentional?"
-  - "delta targets vs putspread v3 conventions"
-  - "per-name structure confidence reuses market posterior, not a name-specific measure -- correct assumption?"
+# RESOLVED 2026-07-22 (Nikolas: "go with your instincts on the 4 questions and let's
+# proceed" -- judgment calls below, reversible if he disagrees on review):
+#   (a) bull_hi short_put stays high-confidence ONLY, not extended to moderate at half
+#       size. bull_hi is a high-vol regime -- exactly where undefined-risk convexity
+#       hurts most if the read is wrong. Matrix already tiers risk down via _smaller
+#       variants elsewhere; widening naked exposure into a high-vol cell's moderate tier
+#       cuts against that pattern rather than following it.
+#   (b) neut_hi's bull-put bias is INTENTIONAL, kept asymmetric. "neut" = no strong
+#       directional edge detected by the HMM, not literal 50/50 -- equities carry
+#       positive unconditional drift + a persistent vol risk premium, so skewing premium
+#       sale toward puts in a neutral-but-elevated-vol regime is standard practice, not
+#       an oversight. A true iron condor is the more-neutral alternative but was never
+#       validated in Phase 0 -- not substituting it in without evidence.
+#   (c) delta targets vs. putspread v3: false conflict, nothing to reconcile. v3 is
+#       0DTE and strike-selected by otm_pct (1% OTM); this dashboard is 21-45 DTE and
+#       delta-targeted. Different tenor, different correct risk unit -- no convention to
+#       import. Current deltas (-0.30/-0.15 credit legs, 0.55/0.30 debit legs) stand.
+#   (d) per-name confidence reusing the market posterior is CONFIRMED, not name-specific.
+#       Matches the plan's explicit "deliberately simple, no per-name HMM" design choice.
+#       A real per-name Bayesian confidence measure is an unvalidated scope expansion,
+#       not something to bolt on unilaterally.
+# No structure_matrix values changed as a result -- this block documents the resolution,
+# not a recalibration.
 
 confidence_bands:
   high: 0.75

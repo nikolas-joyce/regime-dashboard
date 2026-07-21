@@ -4,7 +4,7 @@ Bayesian market regime classifier (direction x volatility, 6 cells) with next-da
 and an options structure recommendation per cell. Full design doc and validation history:
 `research/regime-dashboard-plan.md` (mirrored from the Second Brain vault).
 
-## Status: Phase 1 CLOSED (2026-07-21)
+## Status: Phase 2 CLOSED (2026-07-22)
 
 - **Phase 0 (validation gate): CLOSED.** The market-layer model (HMM direction engine,
   curve-conditioned drift model, vol layer, smoothing, forecast) is live-validated on SPY
@@ -40,7 +40,13 @@ and an options structure recommendation per cell. Full design doc and validation
         confirmed consistent with the established findings -- bear_lo in 29/30 (vs
         step0b's 18/20), bull_hi-vs-bear_hi reversal negative in 22/29 measurable names
         (76%, median -0.37sd vs SPY's -1.08sd)
-- **Phase 2:** unit tests on synthetic data, resolve open calibration items (see below)
+- **Phase 2: CLOSED.** 48 unit tests across `tests/test_model.py` (12), `test_tilt.py` (10),
+  `test_matrix.py` (11), `test_iv_calc.py` (15) -- all passing together in one `pytest`
+  run, committed `866673c`. `config.yaml`'s four open calibration items resolved
+  2026-07-22 (Nikolas: "go with your instincts... and proceed") -- see the RESOLVED
+  block above `structure_matrix` in `config.yaml` for the rationale on each. No
+  `structure_matrix` values changed; this was a documentation/audit-trail resolution,
+  not a recalibration.
 - **Phase 3:** Streamlit app -- not started
 
 ## Validation history (important -- read before changing the model)
@@ -74,17 +80,13 @@ Verified TEST 4 ("curve conditioning adds value") is **not** affected by bug #2 
 checked the notebook's actual feature-construction cell, which never had a NaN-slope
 window to contaminate in the first place.
 
-## Open calibration items (Nikolas sign-off needed)
-
-1. `bull_hi` short_put: high-confidence only, or acceptable at moderate with half size?
-2. `neut_hi`'s bull-put bias -- intentional, or should it be symmetric?
-3. Delta targets vs. putspread v3 conventions
-
 ## Setup
 
 ```bash
-pip install -r requirements.txt
-python -m pipeline.run_nightly   # requires FRED_API_KEY env var
+pip install -r requirements.txt        # prod (nightly Action)
+pip install -r requirements-dev.txt    # prod + pytest, for running tests/
+python -m pipeline.run_nightly         # requires FRED_API_KEY env var
+pytest tests/                          # 48 tests, ~20s
 ```
 
 ## Repo layout
