@@ -4,14 +4,16 @@ Bayesian market regime classifier (direction x volatility, 6 cells) with next-da
 and an options structure recommendation per cell. Full design doc and validation history:
 `research/regime-dashboard-plan.md` (mirrored from the Second Brain vault).
 
-## Status: Phase 1 in progress
+## Status: Phase 1 code-complete, IV snapshot pending first live confirmation
 
 - **Phase 0 (validation gate): CLOSED.** The market-layer model (HMM direction engine,
   curve-conditioned drift model, vol layer, smoothing, forecast) is live-validated on SPY
-  and cross-sectionally confirmed on a 20-name liquid basket. Gate passes on the criteria
+  and cross-sectionally confirmed on a 50-name liquid basket. Gate passes on the criteria
   that matter economically: the structure matrix beats an always-on baseline on Sharpe
   (2.93 vs 2.35), reproduced across every live rerun.
-- **Phase 1 (this repo): in progress.**
+- **Phase 1 (this repo): all pieces built; IV snapshot unit/integration-tested in
+  sandbox only (no live egress there) -- needs one real Actions run against live Yahoo
+  options chains before calling it fully closed. Everything else below is live-verified.**
   - [x] Repo scaffold, `config.yaml` (validated parameters), `requirements.txt`
   - [x] `pipeline/model.py` -- direction engine, vol layer, drift model, smoothing (ported from validated notebook)
   - [x] `pipeline/data_pull.py` -- yfinance + Stooq failover, VX curve, FRED
@@ -23,7 +25,12 @@ and an options structure recommendation per cell. Full design doc and validation
         commit `6313399`: market-gating confirmed correct on real data (bear-tilted names
         capped to neut under the live bull_lo market regime, bull-tilted names passed
         through uncapped)
-  - [ ] Nightly IV/ATM-vol snapshot (plan section 5 step 3) -- NOT YET BUILT
+  - [x] Nightly IV/ATM-vol snapshot (`pipeline/iv_calc.py` + `data_pull.pull_iv_snapshot`,
+        plan section 5 step 3): ATM IV at near-term + 30-45 DTE, IV term slope, 25-delta
+        put/call skew. Batched/throttled/retry x2, missing names logged not fatal.
+        Accumulates `data/iv_snapshots.parquet`, deduped on (date, ticker). NOT yet wired
+        into the per-name vol_state (still realized-vol proxy) -- that's Phase 4, once
+        >=6 months of snapshot history exists, per plan section 9.
   - [x] Expansion from the 20-name validated basket to the full 50-name universe
         (`research/regime_dashboard_step0c_expansion.ipynb`, 2026-07-21): 30 new names
         confirmed consistent with the established findings -- bear_lo in 29/30 (vs

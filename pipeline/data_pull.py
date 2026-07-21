@@ -4,18 +4,17 @@ Regime dashboard — data acquisition.
 yfinance is the #1 operational risk flagged in the plan (research/regime-dashboard-plan.md
 section 8) -- Yahoo has historically blocked cloud-provider IPs, which is why this pulls
 happen in GitHub Actions (not the Streamlit app itself) and fall back to Stooq on failure.
-
-NOT YET WIRED: the 50-name universe expansion beyond the 20 cross-sectionally-validated
-names in config.yaml, and the nightly IV/ATM-vol snapshot logic (plan section 5 step 3).
-Both are Phase 1 remaining work -- this module currently covers prices + VIX complex +
-VX1-VX3 curve + FRED, which is everything the validated model actually consumes.
 """
 from __future__ import annotations
 
 import logging
+import time
+from datetime import date
 from typing import Optional
 
 import pandas as pd
+
+from pipeline.iv_calc import select_expiries, atm_iv_from_chain, skew_25d_from_chain, dte
 
 logger = logging.getLogger(__name__)
 
@@ -115,3 +114,79 @@ def build_feature_frame(prices: pd.DataFrame, vx: pd.DataFrame) -> pd.DataFrame:
     # defensive belt-and-suspenders, not the primary guard.
     subset = [c for c in ["ret", "rv20", "slope_z", "rv_pct", "vix_pct"] if c in feat.columns]
     return feat.dropna(subset=subset)
+
+
+def _fetch_one_chain_snapshot(
+    ticker: str, spot: float, risk_free: float,
+    near_dte_target: int, far_dte_range: tuple[int, int], retries: int,
+) -> Optional[dict]:
+    """One name's IV snapshot: ATM IV at a near-term and a 30-45 DTE expiry, IV term
+    slope between them, and 25-delta put-call skew at the 30-45 DTE expiry. Returns
+    None (not an exception) on any failure -- missing names are logged, not fatal
+    (plan section 5 step 3).
+    """
+    import yfinance as yf
+
+    last_err = None
+    for attempt in range(retries + 1):
+        try:
+            tk = yf.Ticker(ticker)
+            expiries = tk.options
+            near_exp, far_exp = select_expiries(list(expiries), near_dte_target=near_dte_target,
+                                                 far_dte_range=far_dte_range)
+            if far_exp is None:
+                return None  # no usable expiry at all -- not worth retrying
+            far_chain = tk.option_chain(far_exp)
+            far_T = max(dte(far_exp), 1) / 365
+            atm_far = atm_iv_from_chain(far_chain.calls, far_chain.puts, spot)
+            skew = skew_25d_from_chain(far_chain.calls, far_chain.puts, spot, far_T, risk_free)
+            atm_near = None
+            if near_exp and near_exp != far_exp:
+                near_chain = tk.option_chain(near_exp)
+                atm_near = atm_iv_from_chain(near_chain.calls, near_chain.puts, spot)
+            term_slope = (atm_far - atm_near) if (atm_far is not None and atm_near is not None) else None
+            return {
+                "ticker": ticker,
+                "spot": spot,
+                "near_expiry": near_exp,
+                "far_expiry": far_exp,
+                "atm_iv_near": atm_near,
+                "atm_iv_target": atm_far,
+                "iv_term_slope": term_slope,
+                "skew_25d": skew,
+            }
+        except Exception as e:  # noqa: BLE001 -- retry, then give up on this name only
+            last_err = e
+            if attempt < retries:
+                time.sleep(0.5 * (attempt + 1))
+    logger.warning("IV snapshot failed for %s after %d attempt(s): %s", ticker, retries + 1, last_err)
+    return None
+
+
+def pull_iv_snapshot(
+    names: list[str], spot_prices: dict[str, float], risk_free: float = 0.03,
+    near_dte_target: int = 17, far_dte_range: tuple[int, int] = (30, 45),
+    retries: int = 2, throttle_sec: float = 0.35,
+) -> pd.DataFrame:
+    """Nightly ATM IV / term slope / 25-delta skew snapshot for all names (plan section
+    5 step 3). Batched, throttled (sleep between names to avoid rate-limiting a 50-name
+    loop of live chain fetches), retry x2 per name. A missing/failed name is logged and
+    skipped, not a pipeline error -- unlike the VX curve pull, options-chain coverage
+    for any single name isn't a first-class model input yet (Phase 4: swap the
+    realized-vol proxy for IV rank once >=6 months of this snapshot history exists).
+    """
+    rows = []
+    for i, name in enumerate(names):
+        spot = spot_prices.get(name)
+        if spot is None or spot != spot:  # NaN check without importing numpy here
+            logger.warning("IV snapshot skipped for %s: no spot price available", name)
+            continue
+        row = _fetch_one_chain_snapshot(name, float(spot), risk_free, near_dte_target, far_dte_range, retries)
+        if row is not None:
+            rows.append(row)
+        if i < len(names) - 1:
+            time.sleep(throttle_sec)
+    df = pd.DataFrame(rows)
+    if not df.empty:
+        df.insert(0, "date", str(date.today()))
+    return df

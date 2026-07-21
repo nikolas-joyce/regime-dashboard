@@ -1,12 +1,11 @@
 """
 Nightly orchestration: pull data, run the validated market-layer model, write outputs.
 
-STATUS: market layer (SPY direction/vol/drift/smoothing) and the per-name tilt layer
-(plan section 3.5) are both wired end-to-end below. NOT YET IMPLEMENTED (Phase 1
-remaining work):
-  - nightly IV/ATM-vol snapshot (plan section 5 step 3) -- name vol_state below uses
-    the realized-vol proxy, not real IV rank
-  - expansion from the 20-name validated basket to the full ~50-name universe
+STATUS: market layer (SPY direction/vol/drift/smoothing), the per-name tilt layer (plan
+section 3.5), and the nightly IV/ATM-vol snapshot (plan section 5 step 3) are all wired
+end-to-end below. The per-name vol_state in the tilt layer STILL uses the realized-vol
+proxy, not IV rank -- that swap is explicitly Phase 4 ("once >=6 months of snapshot
+history exists"), not now. This run just starts accumulating that history.
 """
 from __future__ import annotations
 
@@ -18,7 +17,7 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from pipeline.data_pull import pull_prices, pull_vx_curve, build_feature_frame
+from pipeline.data_pull import pull_prices, pull_vx_curve, build_feature_frame, pull_iv_snapshot
 from pipeline.model import (
     walk_forward_direction, vol_layer, curve_conditioned_drift_posterior, commit_regime,
 )
@@ -149,6 +148,32 @@ def run() -> dict:
             ),
         }
 
+    # --- Nightly IV/ATM-vol snapshot (plan section 5 step 3) --------------------------
+    # Batched, throttled, retry x2 per name (see data_pull.pull_iv_snapshot); a missing
+    # name is logged and skipped, not a pipeline error -- unlike the VX curve, per-name
+    # options-chain coverage isn't a first-class input to anything live yet. This just
+    # accumulates data/iv_snapshots.parquet toward the Phase 4 IV-rank swap.
+    iv_cfg = cfg.get("iv_snapshot", {})
+    spot_prices = name_prices.iloc[-1].dropna().to_dict()
+    iv_today = pull_iv_snapshot(
+        list(spot_prices.keys()), spot_prices,
+        risk_free=cfg["backtest"]["risk_free"],
+        near_dte_target=iv_cfg.get("near_dte_target", 17),
+        far_dte_range=tuple(iv_cfg.get("far_dte_range", [30, 45])),
+        retries=iv_cfg.get("retries", 2),
+        throttle_sec=iv_cfg.get("throttle_sec", 0.35),
+    )
+    iv_snapshot_path = DATA_DIR / "iv_snapshots.parquet"
+    if not iv_today.empty:
+        if iv_snapshot_path.exists():
+            existing = pd.read_parquet(iv_snapshot_path)
+            combined = pd.concat([existing, iv_today], ignore_index=True)
+            combined = combined.drop_duplicates(subset=["date", "ticker"], keep="last")
+        else:
+            combined = iv_today
+        combined.to_parquet(iv_snapshot_path)
+    print(f"[run_nightly] IV snapshot: {len(iv_today)}/{len(spot_prices)} names covered")
+
     state = {
         "as_of": str(committed.index[-1].date()),
         "data_source": source,
@@ -159,7 +184,9 @@ def run() -> dict:
         "curve_beta_latest": float(beta_slope.iloc[-1]) if not np.isnan(beta_slope.iloc[-1]) else None,
         "recommendation": recommendation,
         "per_name": per_name_latest,
-        # TODO(Phase 1 remaining): iv_snapshot, 50-name universe expansion
+        "iv_snapshot_coverage": f"{len(iv_today)}/{len(spot_prices)}",
+        # TODO(Phase 4): swap per-name vol_state realized-vol proxy for IV rank once
+        # iv_snapshots.parquet has >=6 months of history.
     }
 
     dirpost.to_parquet(DATA_DIR / "dirpost.parquet")

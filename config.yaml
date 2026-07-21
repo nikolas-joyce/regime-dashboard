@@ -123,6 +123,15 @@ tilt_layer:
   name_vol_pct_window: 252
   name_vol_pct_thresh: 0.60
 
+# Nightly IV/ATM-vol snapshot (plan section 5 step 3). Accumulates data/iv_snapshots.parquet
+# toward the Phase 4 swap (realized-vol proxy -> real IV rank, once >=6 months of history
+# exists) -- NOT wired into vol_state yet, this just starts collecting the data.
+iv_snapshot:
+  near_dte_target: 17       # near-term expiry for the IV term-slope leg
+  far_dte_range: [30, 45]   # target expiry range, per plan section 5 step 3
+  retries: 2
+  throttle_sec: 0.35        # sleep between names -- avoid rate-limiting a 50-name chain-fetch loop
+
 forecast:
   curve_k_grid: [0.0, 0.15, 0.30, 0.60]   # tilt sensitivity grid tested in step0 TEST 4
   # NOTE: step0's TEST 4 found curve-conditioning adds value (curve_conditioning_adds=true,
