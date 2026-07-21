@@ -1,0 +1,130 @@
+# Regime Dashboard — configuration
+# All parameters here were empirically validated in Phase 0 (see research/regime-dashboard-plan.md
+# section 7b for the full validation history — label-continuity fix, freeze-bug fix, vol-conditional
+# separation redesign, cross-sectional confirmation, and two rejected refinements: direction-
+# conditional vol thresholds and curve-gating). Do not hand-tune these without re-running the
+# step0/step0b notebooks — several plausible-looking tweaks were tested and empirically failed.
+
+data:
+  start_date: "2005-01-01"
+  underlyings_index: ["SPY", "QQQ", "IWM"]
+  # Cross-sectionally validated basket (step0b) -- expand toward the full 50-name universe
+  # incrementally, re-running step0b's per-name diagnostic on any new additions before trusting them.
+  underlyings_names:
+    - AAPL
+    - MSFT
+    - NVDA
+    - AMZN
+    - GOOGL
+    - META
+    - JPM
+    - BAC
+    - XOM
+    - CVX
+    - UNH
+    - JNJ
+    - V
+    - MA
+    - PG
+    - KO
+    - HD
+    - DIS
+    - CSCO
+    - WMT
+  vix_tickers: ["^VIX", "^VIX3M", "^VIX9D"]
+  fred_series:
+    hy_oas: "BAMLH0A0HYM2"
+  stooq_failover: true
+
+direction_engine:
+  n_states: 3
+  refit_every: 63          # trading days between HMM refits
+  min_train: 756           # min obs before first fit (3y)
+  # v3 fix: z-score separation gate is DIAGNOSTIC ONLY, does not block refit acceptance.
+  # v2 (hard gate at 1.5) froze the model on its first pre-GFC fit -- worse than the bug it
+  # replaced. Continuity matching (nearest-previous-mean assignment) is what actually prevents
+  # label swaps; see pipeline/model.py fit_hmm().
+  sep_z_thresh: 0.0
+  random_state: 7
+  min_covar: 1.0e-6
+
+drift_model:
+  # Curve slope is VX1-VX3 from vix-utils, (VX3-VX1)/VX1, z-scored -- NOT spot VIX3M/VIX ratios.
+  # This is Nikolas's researched dataset; spot ratios are robustness comparators only.
+  slope_source: "vix1_vix3_futures"
+  forward_horizon_days: 5
+  bullish_threshold: 0.65
+  bearish_threshold: 0.35
+
+vol_layer:
+  # Reverted from v5's direction-conditional percentiles (tested live: didn't shrink the
+  # bull_hi/bear_hi effect, cost backtest Sharpe 2.93->2.64). Back to unconditional percentiles.
+  weights:
+    vix_pct: 1.2
+    backwardation: 1.0
+    rv_pct: 1.0
+    bias: -1.6
+  logistic_scale: 4
+  vix_pct_window: 252
+  rv_window: 20
+  rv_pct_window: 252
+
+smoothing:
+  commit_p: 0.70
+  commit_days: 2
+  min_dwell: 3
+
+forecast:
+  curve_k_grid: [0.0, 0.15, 0.30, 0.60]   # tilt sensitivity grid tested in step0 TEST 4
+  # NOTE: step0's TEST 4 found curve-conditioning adds value (curve_conditioning_adds=true,
+  # reproduced across every live run) -- unlike curve-GATING (TEST 1d/5b), which was tested
+  # and rejected for the structure matrix. These are different mechanisms; don't conflate them.
+
+backtest:
+  trade_dte: 21
+  trade_step: 5
+  risk_free: 0.03
+
+# Regime x structure matrix. bear_hi's call-ratio-backspread alternative was tested (TEST 5c,
+# n=12 paired trades) and REJECTED -- underperformed the original on every metric (mean, hit
+# rate, worst case, AND best case). Do not swap this out without a much larger validated sample.
+structure_matrix:
+  bull_hi:
+    high_confidence: {structure: "short_put", legs: [{cp: put, delta: -0.30, pos: -1}]}
+    moderate_confidence: {structure: "bull_put_credit_spread", legs: [{cp: put, delta: -0.30, pos: -1}, {cp: put, delta: -0.15, pos: 1}]}
+    low_confidence: {structure: "no_trade", legs: []}
+  bull_lo:
+    high_confidence: {structure: "bull_call_debit_spread", legs: [{cp: call, delta: 0.55, pos: 1}, {cp: call, delta: 0.30, pos: -1}]}
+    moderate_confidence: {structure: "bull_call_debit_spread_smaller", legs: [{cp: call, delta: 0.55, pos: 1}, {cp: call, delta: 0.30, pos: -1}]}
+    low_confidence: {structure: "no_trade", legs: []}
+  bear_hi:
+    high_confidence: {structure: "bear_call_credit_spread", legs: [{cp: call, delta: 0.30, pos: -1}, {cp: call, delta: 0.15, pos: 1}]}
+    moderate_confidence: {structure: "bear_call_credit_spread_smaller", legs: [{cp: call, delta: 0.30, pos: -1}, {cp: call, delta: 0.15, pos: 1}]}
+    low_confidence: {structure: "no_trade", legs: []}
+  bear_lo:
+    high_confidence: {structure: "bear_put_debit_spread", legs: [{cp: put, delta: -0.55, pos: 1}, {cp: put, delta: -0.30, pos: -1}]}
+    moderate_confidence: {structure: "bear_put_debit_spread_smaller", legs: [{cp: put, delta: -0.55, pos: 1}, {cp: put, delta: -0.30, pos: -1}]}
+    low_confidence: {structure: "no_trade", legs: []}
+  neut_hi:
+    high_confidence: {structure: "wide_bull_put_credit_spread", legs: [{cp: put, delta: -0.20, pos: -1}, {cp: put, delta: -0.10, pos: 1}]}
+    moderate_confidence: {structure: "no_trade", legs: []}
+    low_confidence: {structure: "no_trade", legs: []}
+  neut_lo:
+    high_confidence: {structure: "no_trade", legs: []}
+    moderate_confidence: {structure: "no_trade", legs: []}
+    low_confidence: {structure: "no_trade", legs: []}
+
+# OPEN ITEMS -- flagged in the plan, not yet resolved by Nikolas:
+#   (a) short_put only at high confidence, or acceptable at moderate with half size?
+#   (b) neut_hi as bull-put rather than symmetric premium sale -- intentional long bias?
+#   (c) delta targets vs. putspread v3 conventions
+open_calibration_items:
+  - "bull_hi short_put confidence threshold"
+  - "neut_hi long bias intentional?"
+  - "delta targets vs putspread v3 conventions"
+
+confidence_bands:
+  high: 0.75
+  moderate: 0.55
+
+default_dte: [30, 45]

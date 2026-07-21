@@ -1,0 +1,32 @@
+name: nightly-regime-update
+
+on:
+  schedule:
+    - cron: "30 22 * * 1-5"   # ~22:30 UTC weekdays, per plan section 5
+  workflow_dispatch: {}        # allow manual trigger for testing
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run nightly pipeline
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: python -m pipeline.run_nightly
+
+      - name: Commit outputs
+        run: |
+          git config user.name "regime-dashboard-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/ output/
+          git diff --quiet --cached || git commit -m "nightly regime update $(date -u +%Y-%m-%d)"
+          git push
