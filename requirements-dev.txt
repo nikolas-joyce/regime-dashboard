@@ -1,0 +1,3 @@
+# Dev/test-only deps -- not needed by the nightly GitHub Actions pipeline itself.
+-r requirements.txt
+pytest>=8.0
