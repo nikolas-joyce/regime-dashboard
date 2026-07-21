@@ -19,7 +19,10 @@ and an options structure recommendation per cell. Full design doc and validation
   - [x] `pipeline/run_nightly.py` -- orchestration (SPY market layer only, end-to-end)
   - [x] `.github/workflows/nightly.yml` -- live-tested, secret + permissions configured
   - [x] First successful live GitHub Actions run (2026-07-21, run #5, commit `bc078b3`)
-  - [ ] Per-name tilt layer (plan section 3.5) -- NOT YET BUILT
+  - [x] Per-name tilt layer (`pipeline/tilt.py`, plan section 3.5) -- live-verified run #7,
+        commit `6313399`: market-gating confirmed correct on real data (bear-tilted names
+        capped to neut under the live bull_lo market regime, bull-tilted names passed
+        through uncapped)
   - [ ] Nightly IV/ATM-vol snapshot (plan section 5 step 3) -- NOT YET BUILT
   - [ ] Expansion from the 20-name validated basket to the full ~50-name universe
 - **Phase 2:** unit tests on synthetic data, resolve open calibration items (see below)
