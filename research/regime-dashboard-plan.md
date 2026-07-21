@@ -101,7 +101,7 @@ App reads raw files from the repo. Live chain fetch happens only in drill-down, 
 
 **Names table (main).** 50 rows: name, tilt z-scores, vol percentile, assigned cell, recommended structure, confidence, ATM IV (latest snapshot). Sortable/filterable by cell and structure. Standalone/overlay toggle switches the recommendation column.
 
-**Drill-down (click a name).** Price chart with name-level regime ribbon; button fetches live chain → concrete strikes per the matrix, mid premium, max loss/gain, breakeven; IV snapshot history sparkline (grows over time).
+**Drill-down (click a name).** Price chart with name-level regime ribbon; button fetches live chain → concrete strikes per the matrix, mid premium, max loss/gain, breakeven; IV snapshot history sparkline (grows over time). Per-name call history log (date, committed cell, posterior, tilt inputs, realized forward return once matured). Forecast density panel: empirical forward-return distribution conditional on the name's current cell/tilt, overlaid against the name's unconditional full-history empirical distribution (KDE or histogram) — same KS-test/effect-size methodology as Phase 0's TEST 1c, re-run live per name as an ongoing out-of-sample check rather than a one-time gate. Empirical null only (no parametric baseline) per 2026-07-21 decision.
 
 **History tab.** SPY regime ribbon full-history, per-regime forward return/vol stats from validation, regime duration distribution.
 

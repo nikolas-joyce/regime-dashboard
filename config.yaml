@@ -74,6 +74,20 @@ smoothing:
   commit_days: 2
   min_dwell: 3
 
+# Per-name tilt layer (plan section 3.5, "deliberately simple" -- no per-name HMMs).
+# Confidence tiering for name-level structure recommendations reuses the MARKET layer's
+# posterior, not a name-specific one -- the tilt layer itself is z-score-based, not
+# Bayesian, and the plan doesn't specify a separate name-level confidence measure. This
+# is a design assumption, not a validated choice -- flagged as an open item below.
+tilt_layer:
+  rs_window_short: 21
+  rs_window_long: 63
+  rs_z_window: 252
+  rs_bull_thresh: 0.5
+  rs_bear_thresh: -0.5
+  name_vol_pct_window: 252
+  name_vol_pct_thresh: 0.60
+
 forecast:
   curve_k_grid: [0.0, 0.15, 0.30, 0.60]   # tilt sensitivity grid tested in step0 TEST 4
   # NOTE: step0's TEST 4 found curve-conditioning adds value (curve_conditioning_adds=true,
@@ -122,6 +136,7 @@ open_calibration_items:
   - "bull_hi short_put confidence threshold"
   - "neut_hi long bias intentional?"
   - "delta targets vs putspread v3 conventions"
+  - "per-name structure confidence reuses market posterior, not a name-specific measure -- correct assumption?"
 
 confidence_bands:
   high: 0.75
