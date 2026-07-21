@@ -24,7 +24,11 @@ and an options structure recommendation per cell. Full design doc and validation
         capped to neut under the live bull_lo market regime, bull-tilted names passed
         through uncapped)
   - [ ] Nightly IV/ATM-vol snapshot (plan section 5 step 3) -- NOT YET BUILT
-  - [ ] Expansion from the 20-name validated basket to the full ~50-name universe
+  - [x] Expansion from the 20-name validated basket to the full 50-name universe
+        (`research/regime_dashboard_step0c_expansion.ipynb`, 2026-07-21): 30 new names
+        confirmed consistent with the established findings -- bear_lo in 29/30 (vs
+        step0b's 18/20), bull_hi-vs-bear_hi reversal negative in 22/29 measurable names
+        (76%, median -0.37sd vs SPY's -1.08sd)
 - **Phase 2:** unit tests on synthetic data, resolve open calibration items (see below)
 - **Phase 3:** Streamlit app -- not started
 

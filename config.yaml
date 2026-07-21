@@ -8,8 +8,13 @@
 data:
   start_date: "2005-01-01"
   underlyings_index: ["SPY", "QQQ", "IWM"]
-  # Cross-sectionally validated basket (step0b) -- expand toward the full 50-name universe
-  # incrementally, re-running step0b's per-name diagnostic on any new additions before trusting them.
+  # Cross-sectionally validated basket. Original 20 (step0b, 2026-07-21): AAPL-WMT below.
+  # Expansion 30 (step0c, 2026-07-21): confirmed consistent, not contradictory -- bear_lo
+  # occurs in 29/30 names (stronger than step0b's 18/20), bull_hi-vs-bear_hi reversal
+  # negative in 22/29 measurable names (76%, median -0.37sd, vs SPY's -1.08sd). PEP shows
+  # no bear_lo occurrences in-sample; CRM shows no bull_lo occurrences in-sample -- both
+  # noted, neither blocks inclusion (diagnostic, not a hard per-name gate). Full 50-name
+  # universe per plan section 1.
   underlyings_names:
     - AAPL
     - MSFT
@@ -31,6 +36,36 @@ data:
     - DIS
     - CSCO
     - WMT
+    - WFC
+    - GS
+    - MS
+    - C
+    - SCHW
+    - LLY
+    - ABBV
+    - MRK
+    - PFE
+    - TMO
+    - CAT
+    - HON
+    - RTX
+    - BA
+    - NKE
+    - MCD
+    - SBUX
+    - LOW
+    - TGT
+    - PEP
+    - COST
+    - ADBE
+    - CRM
+    - AVGO
+    - QCOM
+    - NFLX
+    - AMD
+    - COP
+    - VZ
+    - LIN
   vix_tickers: ["^VIX", "^VIX3M", "^VIX9D"]
   fred_series:
     hy_oas: "BAMLH0A0HYM2"
