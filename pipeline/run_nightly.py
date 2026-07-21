@@ -128,12 +128,22 @@ def run() -> dict:
         if cell_hist.empty:
             continue
         name_cells_hist[tk] = cell_hist
+        latest_date = cell_hist.index[-1]
         latest = cell_hist.iloc[-1]
+        # Look up rs_z at the SAME date as the reported cell, not rs_z_short/long's own
+        # positional tail (.iloc[-1]) -- those series run over r's raw (VX-curve-
+        # independent) date range, which can extend past committed's VX-curve-gated
+        # coverage. Using .iloc[-1] there reports whatever's at r's own later tail
+        # (often NaN, since market_ret has no value past committed's range) against a
+        # "cell" that's actually from an earlier, valid date -- a real mismatch caught
+        # by every single name coming back null simultaneously in the first live run.
+        rzs = rs_z_short.get(latest_date)
+        rzl = rs_z_long.get(latest_date)
         per_name_latest[tk] = {
-            "as_of": str(cell_hist.index[-1].date()),
+            "as_of": str(latest_date.date()),
             "cell": latest,
-            "rs_z_short": float(rs_z_short.iloc[-1]) if pd.notna(rs_z_short.iloc[-1]) else None,
-            "rs_z_long": float(rs_z_long.iloc[-1]) if pd.notna(rs_z_long.iloc[-1]) else None,
+            "rs_z_short": float(rzs) if pd.notna(rzs) else None,
+            "rs_z_long": float(rzl) if pd.notna(rzl) else None,
             "recommendation": recommend_structure(
                 latest, latest_posterior, cfg["structure_matrix"], cfg["confidence_bands"],
             ),
