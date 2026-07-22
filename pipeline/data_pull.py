@@ -64,10 +64,25 @@ def pull_vx_curve(start: Optional[str] = None) -> pd.DataFrame:
         nest_asyncio.apply()
     except ImportError:
         pass
+
+    # Diagnostic (2026-07-22): a live Action run showed pull_vx_curve() capping at
+    # 2026-05-19 while an identical Colab call to the same two vix_utils functions
+    # returned data through 2026-07-21. These prints isolate WHERE the truncation
+    # happens (raw fetch vs. pivot step) and whether it's a version difference --
+    # remove once the discrepancy is root-caused.
+    ver = getattr(vix_utils, "__version__", "unknown")
+    print(f"[pull_vx_curve] vix_utils version={ver}")
+
     ts = vix_utils.load_vix_term_structure()
+    print(f"[pull_vx_curve] raw ts: {ts.shape[0]} rows, "
+          f"Trade Date {ts['Trade Date'].min()} to {ts['Trade Date'].max()}")
+
     wide = vix_utils.pivot_futures_on_monthly_tenor(ts)
     vx = pd.DataFrame({"VX1": wide[1]["Close"], "VX3": wide[3]["Close"]})
     vx.index = pd.to_datetime(vx.index)
+    print(f"[pull_vx_curve] post-pivot vx: {len(vx)} rows, "
+          f"{vx.index.min().date()} to {vx.index.max().date()}")
+
     if start:
         vx = vx.loc[vx.index >= start]
     return vx
