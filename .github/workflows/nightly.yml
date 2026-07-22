@@ -38,17 +38,21 @@ jobs:
         run: C:\actions-runner\regime-dashboard-venv\Scripts\python.exe -m pipeline.run_nightly
 
       - name: Commit outputs
-        shell: 'C:\Program Files\Git\bin\bash.exe -e {0}'
-        # Explicit shell (2026-07-22, revised): this step's `||` syntax needs bash or
-        # PowerShell 7+. `shell: bash` alone resolved to Windows' built-in WSL bash stub
-        # on this machine (no distro installed -> immediate failure) rather than Git
-        # Bash, because the WSL stub apparently wins PATH search order here. Pointing at
-        # Git for Windows' bash.exe by its full install path bypasses that ambiguity
-        # entirely -- confirm this path exists first via
-        # `Test-Path "C:\Program Files\Git\bin\bash.exe"` if it's ever moved.
+        # Rewritten in plain PowerShell (2026-07-22): the original bash `||` one-liner
+        # needed a working bash. `shell: bash` resolved to Windows' WSL stub (no distro
+        # installed -> failure); pointing at Git Bash's full path
+        # ('C:\Program Files\Git\bin\bash.exe -e {0}') hit a separate runner bug --
+        # the space in "Program Files" breaks the runner's parsing of a custom shell
+        # command line ("Second path fragment must not be a drive or UNC name"). Avoiding
+        # bash entirely sidesteps both problems -- no `shell:` override needed, this runs
+        # fine under whatever PowerShell version is default on a Windows runner.
         run: |
           git config user.name "regime-dashboard-bot"
           git config user.email "actions@users.noreply.github.com"
           git add data/ output/
-          git diff --quiet --cached || git commit -m "nightly regime update $(date -u +%Y-%m-%d)"
+          git diff --quiet --cached
+          if ($LASTEXITCODE -ne 0) {
+            $today = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd')
+            git commit -m "nightly regime update $today"
+          }
           git push
