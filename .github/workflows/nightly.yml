@@ -18,9 +18,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+      - name: Check Python (system install, not provisioned by this workflow)
+        # actions/setup-python@v5 removed 2026-07-22: it tries to download and install
+        # its own isolated Python into the runner's hostedtoolcache, which is a
+        # GitHub-hosted-runner pattern -- it failed here ("Error happened during Python
+        # installation", exit code 1) on this self-hosted Windows box. Self-hosted
+        # runners are expected to already have their toolchain present; this PC does
+        # (Nikolas already runs `python -m pipeline.run_nightly` directly), so just use
+        # whatever's on PATH instead of provisioning a new one.
+        run: python --version
 
       - name: Install dependencies
         run: pip install -r requirements.txt
