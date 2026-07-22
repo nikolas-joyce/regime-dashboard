@@ -11,8 +11,7 @@ import pytest
 
 from app.analytics import (
     empirical_transition_matrix, next_day_probs, exit_probability, regime_runs,
-    days_in_current_regime, forward_returns, conditional_vs_unconditional_density,
-    structure_terms, call_history_log, CELLS,
+    days_in_current_regime, structure_terms, call_history_log, CELLS,
 )
 
 
@@ -74,51 +73,6 @@ class TestRegimeRuns:
         seq = ["bear_hi"] * 4 + ["bull_lo"] * 7
         committed = _committed_series(seq)
         assert days_in_current_regime(committed) == 7
-
-
-class TestForwardReturns:
-    def test_horizon_shift_matches_manual_calc(self):
-        idx = pd.bdate_range("2020-01-01", periods=10)
-        price = pd.Series([100, 101, 102, 103, 104, 105, 106, 107, 108, 109], index=idx)
-        fwd = forward_returns(price, horizon=2)
-        expected_first = np.log(102 / 100)
-        assert fwd.iloc[0] == pytest.approx(expected_first)
-        # last 2 obs can't have a matured 2-day-forward return
-        assert len(fwd) == 8
-
-
-class TestConditionalVsUnconditionalDensity:
-    def test_insufficient_data_flagged_below_20_obs(self):
-        idx = pd.bdate_range("2020-01-01", periods=30)
-        price = pd.Series(100 * np.exp(np.cumsum(np.full(30, 0.001))), index=idx)
-        cells = pd.Series(["bull_lo"] * 5 + ["bear_hi"] * 25, index=idx)
-        result = conditional_vs_unconditional_density(price, cells, "bull_lo", horizon=2)
-        assert result["insufficient_data"] is True
-
-    def test_detects_a_real_shift_in_conditional_mean(self):
-        # Sticky multi-day runs (each >> horizon), mirroring real committed_regime
-        # behavior under min_dwell smoothing -- an IID-per-day cell label would make a
-        # 3-day-forward window mostly NOT overlap the origin day's own cell, drowning
-        # the conditioning signal in noise regardless of how real the underlying effect
-        # is. This is how conditional_vs_unconditional_density is actually used (against
-        # name_cell_history, itself derived from the sticky market/tilt gating).
-        rng = np.random.RandomState(11)
-        run_labels = (["bull_lo", "bear_hi", "neut_lo"] * 20)[:60]
-        rng.shuffle(run_labels)
-        run_length = 15
-        cells_list, ret_list = [], []
-        for label in run_labels:
-            drift = 0.004 if label == "bull_lo" else 0.0
-            ret_list.append(rng.normal(0, 0.004, run_length) + drift)
-            cells_list.append([label] * run_length)
-        idx = pd.bdate_range("2020-01-01", periods=run_length * len(run_labels))
-        cells = pd.Series(np.concatenate(cells_list), index=idx)
-        price = pd.Series(100 * np.exp(np.cumsum(np.concatenate(ret_list))), index=idx)
-
-        result = conditional_vs_unconditional_density(price, cells, "bull_lo", horizon=3)
-        assert result["insufficient_data"] is False
-        assert result["conditional_mean"] > result["unconditional_mean"]
-        assert result["effect_size_sd"] > 0.2
 
 
 class TestStructureTerms:

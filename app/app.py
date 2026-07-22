@@ -25,13 +25,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from datetime import datetime, date
 
+import altair as alt
 import numpy as np
 import pandas as pd
 import streamlit as st
 
 from app.data import (
     load_config, load_state, load_cell_posterior, load_committed_regime, load_dirpost,
-    load_name_cells, load_iv_snapshots, name_cell_history, name_iv_history,
+    load_name_cells, load_iv_snapshots, load_forecast_density, name_cell_history, name_iv_history,
     fetch_price_history, fetch_option_expiries, fetch_option_chain, CELLS,
 )
 from app.analytics import (
@@ -47,6 +48,13 @@ CELL_LABELS = {
     "bull_hi": "Bull / High Vol", "bull_lo": "Bull / Low Vol",
     "neut_hi": "Neutral / High Vol", "neut_lo": "Neutral / Low Vol",
     "bear_hi": "Bear / High Vol", "bear_lo": "Bear / Low Vol",
+}
+# Directional hue (bull=green, neut=gray, bear=red) with a darker/more saturated shade
+# for the high-vol side of each pair -- used for the drill-down's regime-ribbon overlay.
+CELL_COLORS = {
+    "bull_hi": "#1B5E20", "bull_lo": "#81C784",
+    "neut_hi": "#616161", "neut_lo": "#BDBDBD",
+    "bear_hi": "#B71C1C", "bear_lo": "#EF9A9A",
 }
 CELL_GRID = [["bear_hi", "neut_hi", "bull_hi"], ["bear_lo", "neut_lo", "bull_lo"]]
 
@@ -131,7 +139,6 @@ def render_transition_panel(committed: pd.Series, current_cell: str):
     # regime's transition matrix. AppTest's exception-only check couldn't catch a bad
     # Vega-Lite spec, only a live screenshot did (2026-07-22). Explicit Altair chart
     # with a forced [0,1] scale removes the auto-formatting ambiguity that caused it.
-    import altair as alt
     chart = (
         alt.Chart(chart_df)
         .mark_bar()
@@ -160,6 +167,16 @@ def render_names_tab(state: dict, cfg: dict):
         })
     df = pd.DataFrame(rows)
 
+    # Forecast density -- precomputed nightly (pipeline/forecast.py), not live-fetched,
+    # so this merge is free. Empty until the first post-2026-07-22 nightly run lands it.
+    fd = load_forecast_density()
+    if not fd.empty:
+        fd_cols = fd[["ticker", "effect_size_sd", "ks_p", "n_conditional",
+                       "conditional_hist", "unconditional_hist"]]
+        df = df.merge(fd_cols, on="ticker", how="left")
+        for col in ["conditional_hist", "unconditional_hist"]:
+            df[col] = df[col].apply(lambda x: list(x) if isinstance(x, (list, np.ndarray)) else [])
+
     col1, col2 = st.columns(2)
     cell_filter = col1.multiselect("Filter by cell", CELLS, default=[])
     structure_filter = col2.multiselect("Filter by structure", sorted(df["structure"].dropna().unique()), default=[])
@@ -176,7 +193,21 @@ def render_names_tab(state: dict, cfg: dict):
         "pre-gating tilt/vol series persisted per date -- not currently written by "
         "run_nightly.py, so that toggle isn't built yet. Flagging rather than faking it."
     )
-    st.dataframe(filtered.sort_values("ticker"), width="stretch", hide_index=True)
+    if not fd.empty:
+        st.caption(
+            "conditional_hist/unconditional_hist sparklines: forward-return distribution "
+            "given the name's current cell vs. its full unconditional history, same bin "
+            "edges for both (directly comparable shapes). effect_size_sd/ks_p from the "
+            "same KS-test/effect-size methodology as Phase 0's TEST 1c. Blank sparkline = "
+            "fewer than 20 matured observations in that cell so far."
+        )
+    column_config = {
+        "conditional_hist": st.column_config.BarChartColumn("Density (cond.)", width="small"),
+        "unconditional_hist": st.column_config.BarChartColumn("Density (uncond.)", width="small"),
+        "effect_size_sd": st.column_config.NumberColumn("Effect size (sd)", format="%.2f"),
+        "ks_p": st.column_config.NumberColumn("KS p-value", format="%.3f"),
+    } if not fd.empty else None
+    st.dataframe(filtered.sort_values("ticker"), width="stretch", hide_index=True, column_config=column_config)
 
     st.divider()
     st.subheader("Drill-down")
@@ -194,11 +225,42 @@ def render_drilldown(ticker: str, name_state: dict, cfg: dict):
     with tabs[0]:
         if st.button(f"Fetch live price history for {ticker}", key=f"px_{ticker}"):
             px = fetch_price_history(ticker)
-            chart_df = px.rename("close").to_frame()
-            st.line_chart(chart_df)
             ribbon = cell_hist.reindex(px.index, method="ffill")
-            st.caption("Regime ribbon (cell per date, last 20 obs):")
-            st.dataframe(ribbon.tail(20).to_frame("cell"), width="stretch")
+            runs = regime_runs(ribbon)
+            if runs.empty:
+                st.line_chart(px.rename("close").to_frame())
+            else:
+                price_min, price_max = float(px.min()), float(px.max())
+                pad = (price_max - price_min) * 0.02 or 1.0
+                band_df = runs.copy()
+                band_df["y0"] = price_min - pad
+                band_df["y1"] = price_max + pad
+                bands = (
+                    alt.Chart(band_df)
+                    .mark_rect(opacity=0.28)
+                    .encode(
+                        x=alt.X("start:T", title=None), x2="end:T",
+                        y=alt.Y("y0:Q", title="Price"), y2="y1:Q",
+                        color=alt.Color(
+                            "regime:N",
+                            scale=alt.Scale(domain=list(CELL_COLORS.keys()), range=list(CELL_COLORS.values())),
+                            legend=alt.Legend(title="Regime"),
+                        ),
+                        tooltip=["regime:N", "start:T", "end:T", "duration_days:Q"],
+                    )
+                )
+                line = (
+                    alt.Chart(px.rename("close").reset_index().rename(columns={"index": "date"}))
+                    .mark_line(color="black", strokeWidth=1.5)
+                    .encode(x="date:T", y="close:Q")
+                )
+                st.altair_chart((bands + line).properties(height=400), width="stretch")
+                st.caption(
+                    "Colored bands are contiguous regime runs (per-name cell, market-gated) "
+                    "aligned to the fetched price history -- hover a band for its regime, "
+                    "start/end dates, and duration. This is the same regime_runs() logic "
+                    "used for the History tab's duration distribution, applied per name."
+                )
         else:
             st.caption("Price history is fetched live (not persisted by the nightly pipeline) -- click to load.")
             st.dataframe(cell_hist.tail(10).to_frame("cell"), width="stretch")

@@ -4,14 +4,21 @@ Phase 3 -- derived analytics computed from already-loaded data (no new pipeline 
 Pure functions, unit-testable the same way pipeline/ is (see tests/test_app_analytics.py) --
 kept separate from app.py so the Streamlit-specific presentation code doesn't tangle with
 logic that has actual correctness properties worth locking down.
+
+forward_returns/conditional_vs_unconditional_density live in pipeline/forecast.py, not
+here -- run_nightly.py now precomputes forecast density for all 50 names using price data
+it already pulls (see run_nightly.py's forecast-density block), and the app's live
+per-name drill-down (still on-demand, for a same-day-fresher deep dive) should use the
+exact same tested logic rather than a second copy that could drift. Re-exported here so
+existing callers/tests importing from app.analytics don't need to change.
 """
 from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-from scipy import stats
 
 from pipeline.matrix import bs_price, strike_from_delta, price_structure
+from pipeline.forecast import forward_returns, conditional_vs_unconditional_density  # noqa: F401 -- re-exported
 
 CELLS = ["bear_hi", "bear_lo", "neut_hi", "neut_lo", "bull_hi", "bull_lo"]
 
@@ -72,62 +79,6 @@ def days_in_current_regime(committed: pd.Series) -> int:
     if runs.empty:
         return 0
     return int(runs.iloc[-1]["duration_days"])
-
-
-def forward_returns(price: pd.Series, horizon: int) -> pd.Series:
-    """Log forward return over `horizon` trading days, indexed by the ORIGIN date
-    (i.e. value at date t is the return from t to t+horizon) -- matured entries only.
-    """
-    log_px = np.log(price)
-    fwd = log_px.shift(-horizon) - log_px
-    return fwd.dropna()
-
-
-def conditional_vs_unconditional_density(
-    price: pd.Series, cell_history: pd.Series, current_cell: str, horizon: int = 5,
-) -> dict:
-    """Empirical forward-return distribution conditional on `current_cell`, vs. the
-    name's full unconditional history -- same KS-test/effect-size methodology as Phase 0's
-    TEST 1c (see research/regime-dashboard-plan.md section 7), re-run live per name as an
-    ongoing out-of-sample check per the 2026-07-21 empirical-only design decision (no
-    parametric baseline).
-
-    Returns a dict with both raw arrays (for the caller to plot) and the summary stats,
-    or an 'insufficient_data' flag if there aren't enough matured conditional
-    observations to say anything meaningful (< 20, arbitrary but conservative floor).
-    """
-    fwd = forward_returns(price, horizon)
-    aligned_cell = cell_history.reindex(fwd.index).ffill()
-    conditional = fwd[aligned_cell == current_cell].dropna()
-    unconditional = fwd.dropna()
-
-    if len(conditional) < 20:
-        return {
-            "insufficient_data": True,
-            "n_conditional": len(conditional),
-            "n_unconditional": len(unconditional),
-        }
-
-    ks_stat, ks_p = stats.ks_2samp(conditional, unconditional)
-    pooled_std = np.sqrt(
-        ((len(conditional) - 1) * conditional.std() ** 2
-         + (len(unconditional) - 1) * unconditional.std() ** 2)
-        / (len(conditional) + len(unconditional) - 2)
-    )
-    effect_size = (conditional.mean() - unconditional.mean()) / pooled_std if pooled_std > 0 else 0.0
-
-    return {
-        "insufficient_data": False,
-        "conditional": conditional,
-        "unconditional": unconditional,
-        "n_conditional": len(conditional),
-        "n_unconditional": len(unconditional),
-        "conditional_mean": float(conditional.mean()),
-        "unconditional_mean": float(unconditional.mean()),
-        "ks_stat": float(ks_stat),
-        "ks_p": float(ks_p),
-        "effect_size_sd": float(effect_size),
-    }
 
 
 def structure_terms(legs: list[dict], S0: float, sigma: float, r: float, T0: float) -> dict:

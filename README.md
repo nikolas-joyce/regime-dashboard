@@ -67,17 +67,48 @@ and an options structure recommendation per cell. Full design doc and validation
         2026-07-21 design decision)
   - [x] History tab -- regime duration distribution + full run log
   - [x] Diagnostics tab -- data freshness, HMM diagnostics, model-agreement chart
+        (bull_lean vs. committed regime side, both series actually plotted -- an earlier
+        version's caption promised the comparison but only ever drew one line; fixed
+        2026-07-22)
+  - [x] Deployed to Streamlit Community Cloud 2026-07-22
+        (regime-dashboard-9fcprwcjjjqruuhohyqjxn.streamlit.app). Two real bugs surfaced
+        by the first live deploy, neither catchable from sandbox testing: (1)
+        ModuleNotFoundError on `from app.data import (...)` -- Streamlit's runner puts
+        app/'s own directory on sys.path, not the repo root, so `app`/`pipeline` weren't
+        importable from inside app.py; fixed with an explicit sys.path.insert(repo_root)
+        at the top of app.py, reproduced+verified the exact failure locally before
+        shipping the fix. (2) st.bar_chart's auto-scale broke on the transition panel's
+        data shape (mostly-near-zero probabilities + one near 1) -- garbled y-axis tick
+        labels, though the underlying numbers were always correct. Fixed with an
+        explicit Altair chart forcing a [0,1] scale.
+  - [x] Per-name forecast density precomputed nightly (`pipeline/forecast.py`,
+        `data/forecast_density.parquet`) for all 50 names, using price data
+        run_nightly.py already pulls for the tilt layer -- zero extra API cost. Names
+        table now shows effect_size_sd/ks_p plus conditional/unconditional density
+        sparklines (`st.column_config.BarChartColumn`) for every name at once, no
+        per-name clicking required. The drill-down's live "Forecast density" panel
+        still computes on demand too (same-day-fresher deep dive with full stats);
+        both now share pipeline/forecast.py's logic rather than two copies that could
+        drift. Verified end-to-end via a mocked run_nightly.run() in a /tmp scratch
+        copy (sandbox can't reach yfinance) -- confirmed parquet writes correctly with
+        sane histogram/bin-edge shapes.
+  - [x] Color-coded regime overlay on the drill-down price chart (2026-07-22) --
+        replaced the bare price line + small cell-history table with a single layered
+        Altair chart: price line over colored background bands per contiguous regime
+        run (bull=green/bear=red/neut=gray, hi-vol=darker shade), reusing
+        `regime_runs()`. Makes historical regime turns visually obvious at a glance.
   - [ ] Standalone/overlay toggle on the names table -- NOT built. Needs the pre-gating
         per-name tilt/vol series persisted per date; run_nightly.py currently only
         writes the post-gating cell. Flagged in-app rather than faked.
   - [ ] Market internals strip (VIX complex, HY OAS, put/call, SPY ribbon chart) --
         NOT built. Raw price/VIX/HY series aren't persisted by the pipeline (only model
         outputs); would need either a new persisted series or a live fetch.
-  - [ ] Deploy to Streamlit Community Cloud -- not yet done
-  - [ ] Live-fetch code paths (price history, option chains) untestable in this sandbox
+  - [ ] Live-fetch code paths (option chains specifically) untestable in this sandbox
         (egress-blocked) -- verified logic via AppTest with all live-fetch paths button-
-        gated (so the smoke test never has to cross the network); real end-to-end
-        verification needs a live run, same pattern as every other pipeline component.
+        gated. Price-history fetches ARE now confirmed live (Streamlit Cloud deploy);
+        option-chain fetch still unconfirmed against real Yahoo data -- no fallback
+        exists yet if that specifically gets blocked (Tradier-sandbox fallback was
+        planned but never built).
 
 ## Validation history (important -- read before changing the model)
 
@@ -120,7 +151,7 @@ python -m pipeline.run_nightly         # no secrets required currently -- config
                                         # not called anywhere in run_nightly.py yet
                                         # (checked 2026-07-22; will matter once the
                                         # market-internals panel gets built)
-pytest tests/                          # 65 tests, ~25s
+pytest tests/                          # 70 tests, ~10s
 streamlit run app/app.py               # run from repo root so pipeline/ and config.yaml resolve
 ```
 
@@ -134,6 +165,7 @@ pipeline/
   matrix.py              # regime -> structure lookup + BS pricing
   tilt.py                # per-name RS tilt + market-gating
   iv_calc.py              # IV snapshot calc (expiry selection, BS delta, ATM IV, 25d skew)
+  forecast.py              # per-name forecast-density (conditional vs unconditional forward returns)
   run_nightly.py          # orchestration entrypoint
 app/
   data.py                # precomputed readers (cached) + live yfinance fetch (drill-down only)

@@ -85,6 +85,18 @@ def load_iv_snapshots() -> pd.DataFrame:
     return df
 
 
+@st.cache_data(ttl=300)
+def load_forecast_density() -> pd.DataFrame:
+    """Per-name forecast-density summary (one row per ticker, refreshed each nightly
+    run -- see run_nightly.py's forecast-density block, pipeline/forecast.py for the
+    math). Returns empty if the file doesn't exist yet (first deploy, before the next
+    nightly run lands it)."""
+    path = DATA_DIR / "forecast_density.parquet"
+    if not path.exists():
+        return pd.DataFrame()
+    return pd.read_parquet(path)
+
+
 def name_cell_history(ticker: str) -> pd.Series:
     """Single name's cell history as a Date-indexed Series (subset of load_name_cells)."""
     nc = load_name_cells()
