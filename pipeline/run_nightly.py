@@ -60,6 +60,17 @@ def run() -> dict:
     vx = pull_vx_curve(cfg["data"]["start_date"])
     print(f"[run_nightly] VX curve covers {vx.index.min().date()} to {vx.index.max().date()}")
     feat = build_feature_frame(prices, vx)
+    # Diagnostic added 2026-07-22 (round 2): the first diagnostic round showed raw prices
+    # reaching 2026-07-22 but the VX curve capping at 2026-05-19, yet committed/as_of
+    # stops at 2026-05-22 -- only 3 days later. A stale-but-forward-filled VX curve
+    # SHOULD keep feeding slope_z (just repeating the last real value), not truncate the
+    # date range at all -- so this line checks whether build_feature_frame's dropna is
+    # where the cutoff actually happens (pointing at slope_z/vix_pct/rv_pct going NaN
+    # near that date, which would contradict the ffill logic as read) or whether feat
+    # itself reaches 2026-07-22 fine and the truncation is happening later, inside
+    # walk_forward_direction/commit_regime (a different bug, in model.py not here).
+    print(f"[run_nightly] feat (post build_feature_frame dropna) covers "
+          f"{feat.index.min().date()} to {feat.index.max().date()}, {len(feat)} rows")
 
     de = cfg["direction_engine"]
     dirpost, transition_mats, diagnostics = walk_forward_direction(
