@@ -98,6 +98,64 @@ def _diagnostic_check_cboe_reachability() -> None:
         print(f"[pull_vx_curve]   expiry={expiry_str}: status={status}, bytes={nbytes}")
 
 
+def _prefetch_fresh_cboe_monthlies(n_months: int = 5) -> None:
+    """Fix (2026-07-22) for the as_of staleness root cause: CBOE's CDN 403s
+    vix_utils' internal aiohttp downloader for monthly VX settlement files --
+    confirmed from both a GitHub-hosted runner AND Nikolas's home IP with a plain
+    urllib request, so it's not IP-range blocking, it's fingerprinting/reputation
+    on the request itself (same class of problem this project already solved for
+    yfinance with curl_cffi). Fetches the current + next few live monthly
+    contracts directly via curl_cffi's browser TLS impersonation and writes them
+    straight into vix_utils' own on-disk cache, using its exact expected
+    location/filename convention (see download_vix_futures.py's
+    download_one_monthly_future/generate_monthly_url_date).
+
+    This works WITHOUT reimplementing any of vix_utils' parsing/Tenor_Monthly/
+    pivot logic: download_one_future() only overwrites a cached file on a
+    successful (200) response -- on failure for a still-live contract it just
+    returns without touching whatever's on disk. So pre-seeding fresh files here
+    means vix_utils' own (still-failing) fetch attempt becomes a no-op that
+    leaves our data alone, and read_csv_future_file()/pivot_futures_on_monthly_
+    tenor() pick it up exactly as if vix_utils had downloaded it itself.
+    """
+    from curl_cffi import requests as curl_requests
+    import vix_utils
+    from vix_utils.location import data_dir
+
+    monthly_dir = data_dir() / "futures" / "download" / "monthly"
+    monthly_dir.mkdir(parents=True, exist_ok=True)
+
+    today = date.today()
+    y, m = today.year, today.month
+    n_ok, n_fail = 0, 0
+    for _ in range(n_months):
+        try:
+            expiry = vix_utils.vix_futures_expiry_date_monthly(y, m)
+            expiry_str = expiry.isoformat()[:10]
+            url = f"https://cdn.cboe.com/data/us/futures/market_statistics/historical_data/VX/VX_{expiry_str}.csv"
+            save_fn = f"{expiry_str}.m_{m}.CFE_VX_{y}.csv"
+            save_path = monthly_dir / save_fn
+
+            resp = curl_requests.get(url, impersonate="chrome124", timeout=20)
+            if resp.status_code == 200 and resp.content:
+                save_path.write_bytes(resp.content)
+                n_ok += 1
+                print(f"[_prefetch_fresh_cboe_monthlies]   {expiry_str}: status=200, "
+                      f"bytes={len(resp.content)}, wrote {save_fn}")
+            else:
+                n_fail += 1
+                print(f"[_prefetch_fresh_cboe_monthlies]   {expiry_str}: status={resp.status_code}, skipped")
+        except Exception as e:
+            n_fail += 1
+            print(f"[_prefetch_fresh_cboe_monthlies]   {y}-{m:02d}: ERROR {e}")
+        m += 1
+        if m > 12:
+            m = 1
+            y += 1
+    print(f"[_prefetch_fresh_cboe_monthlies] {n_ok}/{n_ok + n_fail} monthly settlement files "
+          f"fetched via curl_cffi and cached for vix_utils")
+
+
 def pull_vx_curve(start: Optional[str] = None) -> pd.DataFrame:
     """VX1/VX3 futures curve via vix-utils. This is a first-class model input (drift
     model + forecast conditioning) -- a failed pull here should be treated as a pipeline
@@ -122,6 +180,12 @@ def pull_vx_curve(start: Optional[str] = None) -> pd.DataFrame:
         _diagnostic_check_cboe_reachability()
     except Exception as e:
         print(f"[pull_vx_curve] diagnostic reachability check itself failed: {e}")
+
+    try:
+        _prefetch_fresh_cboe_monthlies()
+    except Exception as e:
+        print(f"[pull_vx_curve] curl_cffi prefetch failed, falling back to vix_utils' own "
+              f"(likely-403'd) downloader: {e}")
 
     ts = vix_utils.load_vix_term_structure()
     print(f"[pull_vx_curve] raw ts: {ts.shape[0]} rows, "
