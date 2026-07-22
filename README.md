@@ -115,7 +115,11 @@ window to contaminate in the first place.
 ```bash
 pip install -r requirements.txt        # prod (nightly Action)
 pip install -r requirements-dev.txt    # prod + pytest, for running tests/
-python -m pipeline.run_nightly         # requires FRED_API_KEY env var
+python -m pipeline.run_nightly         # no secrets required currently -- config.yaml's
+                                        # fred_series/hy_oas entry is unused dead config,
+                                        # not called anywhere in run_nightly.py yet
+                                        # (checked 2026-07-22; will matter once the
+                                        # market-internals panel gets built)
 pytest tests/                          # 65 tests, ~25s
 streamlit run app/app.py               # run from repo root so pipeline/ and config.yaml resolve
 ```

@@ -9,6 +9,20 @@ Run locally: streamlit run app/app.py   (from repo root, so pipeline/ and config
 """
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+# Streamlit Cloud (and `streamlit run app/app.py` generally) inserts the SCRIPT's own
+# directory (app/) into sys.path, not the invocation cwd/repo root -- unlike a plain
+# `python3 -c "..."` run from the repo root, which is what made this work in local
+# sandbox testing (AppTest via python3 -c has the repo root on sys.path implicitly) and
+# silently masked the bug until the first real Streamlit Cloud deploy. Without this, `app`
+# is not importable as a package from inside its own directory ("No module named 'app.data';
+# 'app' is not a package"), and neither is the sibling `pipeline` package. Insert the repo
+# root explicitly, before any app.*/pipeline.* imports below, so this works regardless of
+# how the runner sets sys.path[0].
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from datetime import datetime, date
 
 import numpy as np
