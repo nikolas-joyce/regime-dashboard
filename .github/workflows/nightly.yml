@@ -18,23 +18,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check Python (system install, not provisioned by this workflow)
-        # actions/setup-python@v5 removed 2026-07-22: it tries to download and install
-        # its own isolated Python into the runner's hostedtoolcache, which is a
-        # GitHub-hosted-runner pattern -- it failed here ("Error happened during Python
-        # installation", exit code 1) on this self-hosted Windows box. Self-hosted
-        # runners are expected to already have their toolchain present; this PC does
-        # (Nikolas already runs `python -m pipeline.run_nightly` directly), so just use
-        # whatever's on PATH instead of provisioning a new one.
-        run: python --version
+      - name: Check Python (dedicated venv, not PATH-resolved)
+        # 2026-07-22: this machine has no general-purpose system Python -- `python` on
+        # PATH resolved to a different tool's (hermes-agent) isolated venv, and the only
+        # other PATH match was the Microsoft Store app-execution-alias stub (unreliable
+        # for automation). Rather than depend on PATH resolution or a service account's
+        # environment at all, this pipeline gets its own dedicated venv at
+        # C:\actions-runner\regime-dashboard-venv (bootstrapped once from hermes-agent's
+        # interpreter, but fully independent -- no shared site-packages), referenced here
+        # by full path.
+        run: C:\actions-runner\regime-dashboard-venv\Scripts\python.exe --version
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: C:\actions-runner\regime-dashboard-venv\Scripts\pip.exe install -r requirements.txt
 
       - name: Run nightly pipeline
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
-        run: python -m pipeline.run_nightly
+        run: C:\actions-runner\regime-dashboard-venv\Scripts\python.exe -m pipeline.run_nightly
 
       - name: Commit outputs
         shell: bash
