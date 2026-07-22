@@ -125,7 +125,22 @@ def render_transition_panel(committed: pd.Series, current_cell: str):
         st.caption(f"Exit probability: {exit_p:.1%}")
 
     chart_df = probs.rename_axis("cell").rename("probability").reset_index()
-    st.bar_chart(chart_df.set_index("cell"))
+    # st.bar_chart's auto-scale/tick-formatting broke on live data (garbled y-axis
+    # labels, e.g. "2e-28"-style ticks) for this exact shape: mostly-near-zero values
+    # plus one value near 1 -- the near-guaranteed distribution for any row of a sticky
+    # regime's transition matrix. AppTest's exception-only check couldn't catch a bad
+    # Vega-Lite spec, only a live screenshot did (2026-07-22). Explicit Altair chart
+    # with a forced [0,1] scale removes the auto-formatting ambiguity that caused it.
+    import altair as alt
+    chart = (
+        alt.Chart(chart_df)
+        .mark_bar()
+        .encode(
+            x=alt.X("cell:N", sort=CELLS, title=None),
+            y=alt.Y("probability:Q", scale=alt.Scale(domain=[0, 1]), axis=alt.Axis(format="%")),
+        )
+    )
+    st.altair_chart(chart, width="stretch")
 
 
 def render_names_tab(state: dict, cfg: dict):
