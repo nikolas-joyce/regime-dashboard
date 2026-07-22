@@ -23,6 +23,7 @@ from pipeline.model import (
 )
 from pipeline.matrix import recommend_structure
 from pipeline.tilt import relative_strength_zscore, direction_tilt, name_vol_state, compute_name_cell
+from pipeline.forecast import compute_name_forecast_density
 
 HERE = Path(__file__).resolve().parent.parent
 DATA_DIR = HERE / "data"
@@ -42,6 +43,14 @@ def run() -> dict:
     names = cfg["data"]["underlyings_names"]
     tickers = ["SPY"] + [t for t in cfg["data"]["vix_tickers"]] + names
     raw_prices, source = pull_prices(tickers, cfg["data"]["start_date"])
+    # Diagnostic added 2026-07-22: as_of was stuck at 2026-05-22 across multiple nightly
+    # runs despite the Action succeeding and committing fresh files each time. No
+    # "dropped N/M cell_posterior rows" message ever appeared, which rules out our own
+    # dropna logic truncating the tail -- so either the raw pull itself isn't reaching
+    # past that date (a Yahoo/yfinance data-availability question, not a bug here), or
+    # the VX curve is the thing capping it. This line settles which, next run.
+    print(f"[run_nightly] raw_prices covers {raw_prices.index.min().date()} to "
+          f"{raw_prices.index.max().date()} (source={source})")
     raw_prices = raw_prices.rename(columns={t: t.lstrip("^") for t in cfg["data"]["vix_tickers"]})
     prices = raw_prices[["SPY"] + [t.lstrip("^") for t in cfg["data"]["vix_tickers"]]]
     name_prices = raw_prices[[n for n in names if n in raw_prices.columns]]
@@ -49,6 +58,7 @@ def run() -> dict:
     if missing_names:
         print(f"[run_nightly] {len(missing_names)} name(s) missing from price pull, skipped: {missing_names}")
     vx = pull_vx_curve(cfg["data"]["start_date"])
+    print(f"[run_nightly] VX curve covers {vx.index.min().date()} to {vx.index.max().date()}")
     feat = build_feature_frame(prices, vx)
 
     de = cfg["direction_engine"]
@@ -147,6 +157,31 @@ def run() -> dict:
                 latest, latest_posterior, cfg["structure_matrix"], cfg["confidence_bands"],
             ),
         }
+
+    # --- Per-name forecast density (plan section 6 drill-down) ------------------------
+    # Precomputed for all 50 names here rather than left as a live-only app feature --
+    # name_prices is already pulled above for the tilt layer's RS z-scores, so this adds
+    # zero extra API calls. Same horizon as the drift model for consistency. One row per
+    # ticker (a snapshot using ALL history to date), overwritten each run -- not an
+    # appending time series like iv_snapshots.parquet, since it's a summary statistic,
+    # not itself a date-indexed observation.
+    forecast_rows = []
+    for tk, cell_hist in name_cells_hist.items():
+        current_cell = per_name_latest[tk]["cell"]
+        fd = compute_name_forecast_density(
+            name_prices[tk].dropna(), cell_hist, current_cell,
+            horizon=dm["forward_horizon_days"],
+        )
+        forecast_rows.append({
+            "date": str(committed.index[-1].date()), "ticker": tk, "current_cell": current_cell,
+            **fd,
+        })
+    if forecast_rows:
+        forecast_density_df = pd.DataFrame(forecast_rows)
+        forecast_density_df.to_parquet(DATA_DIR / "forecast_density.parquet")
+        n_ok = int((~forecast_density_df["insufficient_data"]).sum())
+        print(f"[run_nightly] forecast density: {n_ok}/{len(forecast_density_df)} names "
+              f"had >=20 matured conditional observations")
 
     # --- Nightly IV/ATM-vol snapshot (plan section 5 step 3) --------------------------
     # Batched, throttled, retry x2 per name (see data_pull.pull_iv_snapshot); a missing
