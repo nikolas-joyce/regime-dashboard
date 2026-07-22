@@ -53,6 +53,51 @@ def pull_prices(tickers: list[str], start: str) -> tuple[pd.DataFrame, str]:
         return pull_prices_stooq(tickers, start), "stooq"
 
 
+def _diagnostic_check_cboe_reachability() -> None:
+    """Diagnostic (2026-07-22): directly probe CBOE's settlement CSV endpoint for the
+    current + next 2 live monthly VX contracts, using the exact URL pattern
+    vix_utils' internal downloader requests. That downloader silently swallows any
+    non-200 response for a still-live (future-expiry) contract -- no exception, no
+    log line -- so this is the only way to see from the Actions log whether the
+    runner's network can actually reach these specific CBOE files. Wrapped so a
+    failure here never breaks the real pipeline run. Remove once the as_of
+    staleness discrepancy (fresh in Colab, stale in both a local run and GH
+    Actions) is root-caused.
+    """
+    import urllib.request
+    import urllib.error
+    from datetime import date as _date
+    import vix_utils
+
+    today = _date.today()
+    y, m = today.year, today.month
+    checked = []
+    for _ in range(3):
+        try:
+            expiry = vix_utils.vix_futures_expiry_date_monthly(y, m)
+            expiry_str = expiry.isoformat()[:10]
+            url = f"https://cdn.cboe.com/data/us/futures/market_statistics/historical_data/VX/VX_{expiry_str}.csv"
+            try:
+                req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    body = resp.read()
+                    checked.append((expiry_str, resp.status, len(body)))
+            except urllib.error.HTTPError as e:
+                checked.append((expiry_str, e.code, 0))
+            except Exception as e:
+                checked.append((expiry_str, f"ERROR: {e}", 0))
+        except Exception as e:
+            checked.append((f"{y}-{m:02d} (date calc failed: {e})", "N/A", 0))
+        m += 1
+        if m > 12:
+            m = 1
+            y += 1
+
+    print("[pull_vx_curve] direct CBOE reachability check (current + next 2 monthly contracts):")
+    for expiry_str, status, nbytes in checked:
+        print(f"[pull_vx_curve]   expiry={expiry_str}: status={status}, bytes={nbytes}")
+
+
 def pull_vx_curve(start: Optional[str] = None) -> pd.DataFrame:
     """VX1/VX3 futures curve via vix-utils. This is a first-class model input (drift
     model + forecast conditioning) -- a failed pull here should be treated as a pipeline
@@ -72,6 +117,11 @@ def pull_vx_curve(start: Optional[str] = None) -> pd.DataFrame:
     # remove once the discrepancy is root-caused.
     ver = getattr(vix_utils, "__version__", "unknown")
     print(f"[pull_vx_curve] vix_utils version={ver}")
+
+    try:
+        _diagnostic_check_cboe_reachability()
+    except Exception as e:
+        print(f"[pull_vx_curve] diagnostic reachability check itself failed: {e}")
 
     ts = vix_utils.load_vix_term_structure()
     print(f"[pull_vx_curve] raw ts: {ts.shape[0]} rows, "
