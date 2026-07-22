@@ -81,20 +81,75 @@ def render_header(state: dict, committed: pd.Series):
               help=f"median z-separation: {hmm_diag.get('median_z_separation', float('nan')):.2f}")
 
 
-def render_regime_card(state: dict, cell_posterior: pd.DataFrame):
+def _cell_badge_html(label: str, prob: float, color: str, is_current: bool) -> str:
+    prob_str = f"{prob:.1%}" if prob == prob else "—"
+    border = "3px solid var(--text-primary, #1a1a1a)" if is_current else "1px solid rgba(128,128,128,0.25)"
+    marker = " (current)" if is_current else ""
+    # White text on the two darkest/most-saturated fills (bull_hi, bear_hi, both neut
+    # shades' gray sits in between and reads fine either way -- checked against both).
+    text_color = "#FFFFFF" if color in ("#1B5E20", "#B71C1C") else "#1a1a1a"
+    return (
+        f'<div style="background:{color};color:{text_color};border:{border};'
+        f'border-radius:8px;padding:10px 8px;text-align:center;">'
+        f'<div style="font-weight:600;">{label}{marker}</div>'
+        f'<div style="font-size:1.15em;">{prob_str}</div>'
+        f'</div>'
+    )
+
+
+def render_recommendation_banner(state: dict, cfg: dict):
+    rec = state.get("recommendation", {})
+    structure = rec.get("structure")
+    if not structure:
+        st.info("No market-level recommendation in the latest state.json.")
+        return
+
+    legs = rec.get("legs", [])
+    legs_str = ", ".join(
+        f"{'+' if leg['pos'] > 0 else '-'}{leg['cp']} @ {leg['delta']:.2f}delta" for leg in legs
+    ) if legs else "no legs (no_trade)"
+
+    posterior = state.get("posterior")
+    bands = cfg.get("confidence_bands", {})
+    tier = confidence_tier(posterior, bands) if posterior is not None and bands else None
+    tier_label = {
+        "high_confidence": "High confidence", "moderate_confidence": "Moderate confidence",
+        "low_confidence": "Low confidence",
+    }.get(tier, tier or "confidence unknown")
+    posterior_str = f"{posterior:.1%}" if posterior is not None else "?"
+
+    st.markdown(
+        f'<div style="border:1px solid rgba(128,128,128,0.3); border-radius:10px; '
+        f'padding:14px 18px; margin-bottom:12px;">'
+        f'<div style="font-size:0.85em; opacity:0.7; text-transform:uppercase; letter-spacing:0.03em;">'
+        f'Recommended structure</div>'
+        f'<div style="font-size:1.4em; font-weight:600; margin:2px 0;">{structure.replace("_", " ").title()}</div>'
+        f'<div style="opacity:0.85;">{legs_str}</div>'
+        f'<div style="opacity:0.7; font-size:0.9em; margin-top:4px;">{tier_label} (posterior {posterior_str})</div>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def render_regime_card(state: dict, cell_posterior: pd.DataFrame, cfg: dict):
     st.subheader("Market regime")
+    render_recommendation_banner(state, cfg)
+
     current = state.get("market_regime", "?")
     latest_post = cell_posterior.iloc[-1] if not cell_posterior.empty else pd.Series(dtype=float)
 
+    # Color now always means the same thing everywhere in the app (bull=green,
+    # neut=gray, bear=red; darker=hi-vol -- CELL_COLORS, shared with the drill-down
+    # ribbon overlay). Previously this grid used st.success/st.info (green=current,
+    # blue=other) regardless of direction, which meant a current bear_hi cell showed
+    # green here but red in the ribbon -- same app, opposite color meaning. "Current"
+    # is now a bold border + label instead of overloading color for two things at once.
     for row in CELL_GRID:
         cols = st.columns(3)
         for cell, col in zip(row, cols):
             p = latest_post.get(cell, float("nan"))
-            label = CELL_LABELS[cell]
-            if cell == current:
-                col.success(f"**{label}**\n\n{p:.1%}" if p == p else f"**{label}**")
-            else:
-                col.info(f"{label}\n\n{p:.1%}" if p == p else label)
+            html = _cell_badge_html(CELL_LABELS[cell], p, CELL_COLORS[cell], cell == current)
+            col.markdown(html, unsafe_allow_html=True)
 
     p_bull = None
     dirpost = load_dirpost()
@@ -207,7 +262,13 @@ def render_names_tab(state: dict, cfg: dict):
         "effect_size_sd": st.column_config.NumberColumn("Effect size (sd)", format="%.2f"),
         "ks_p": st.column_config.NumberColumn("KS p-value", format="%.3f"),
     } if not fd.empty else None
-    st.dataframe(filtered.sort_values("ticker"), width="stretch", hide_index=True, column_config=column_config)
+
+    # Default sort by |rs_z_short| descending rather than ticker alphabetical -- surfaces
+    # the most statistically extreme names first regardless of direction. The table's
+    # column headers are still natively clickable to re-sort any other way.
+    display_df = filtered.assign(_abs_rs=filtered["rs_z_short"].abs()) \
+        .sort_values("_abs_rs", ascending=False).drop(columns="_abs_rs")
+    st.dataframe(display_df, width="stretch", hide_index=True, column_config=column_config)
 
     st.divider()
     st.subheader("Drill-down")
@@ -365,14 +426,34 @@ def render_history_tab(committed: pd.Series):
 
 def render_diagnostics_tab(state: dict, committed: pd.Series, dirpost: pd.DataFrame):
     st.subheader("Diagnostics")
-    st.json({
-        "as_of": state.get("as_of"),
-        "data_source": state.get("data_source"),
-        "hmm_diagnostics": state.get("hmm_diagnostics"),
-        "drift_p_up_latest": state.get("drift_p_up_latest"),
-        "curve_beta_latest": state.get("curve_beta_latest"),
-        "iv_snapshot_coverage": state.get("iv_snapshot_coverage"),
-    })
+
+    # Formatted metrics instead of a raw JSON dump (2026-07-22) -- the other three tabs
+    # are readable at a glance, this one wasn't. Raw JSON still available below for
+    # actual debugging, just collapsed by default.
+    hmm_diag = state.get("hmm_diagnostics", {})
+    drift_p_up = state.get("drift_p_up_latest")
+    curve_beta = state.get("curve_beta_latest")
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("As of", state.get("as_of", "?"))
+    c1.metric("Data source", state.get("data_source", "?"))
+    c2.metric("Drift model p(up)", f"{drift_p_up:.1%}" if drift_p_up is not None else "n/a")
+    c2.metric("Curve beta", f"{curve_beta:.4f}" if curve_beta is not None else "n/a")
+    c3.metric(
+        "HMM refits", hmm_diag.get("n_refit", "?"),
+        help=f"median z-separation: {hmm_diag.get('median_z_separation', float('nan')):.2f}",
+    )
+    c3.metric("IV snapshot coverage", state.get("iv_snapshot_coverage", "?"))
+
+    with st.expander("Raw state.json (debugging)"):
+        st.json({
+            "as_of": state.get("as_of"),
+            "data_source": state.get("data_source"),
+            "hmm_diagnostics": hmm_diag,
+            "drift_p_up_latest": drift_p_up,
+            "curve_beta_latest": curve_beta,
+            "iv_snapshot_coverage": state.get("iv_snapshot_coverage"),
+        })
 
     if not dirpost.empty and not committed.empty:
         st.caption(
@@ -405,7 +486,7 @@ def main():
     tabs = st.tabs(["Market Regime", "Names", "History", "Diagnostics"])
 
     with tabs[0]:
-        render_regime_card(state, cell_posterior)
+        render_regime_card(state, cell_posterior, cfg)
         st.divider()
         render_transition_panel(committed, state.get("market_regime", ""))
 
