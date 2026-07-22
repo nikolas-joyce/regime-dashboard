@@ -313,10 +313,23 @@ def render_diagnostics_tab(state: dict, committed: pd.Series, dirpost: pd.DataFr
     })
 
     if not dirpost.empty and not committed.empty:
-        st.caption("Model agreement over time: HMM bullish lean (p_bull - p_bear) vs. committed regime side.")
-        merged = dirpost.copy()
-        merged["hmm_lean"] = merged["p_bull"] - merged["p_bear"]
-        st.line_chart(merged["hmm_lean"].tail(252))
+        st.caption(
+            "HMM's bullish lean (p_bull - p_bear, continuous -1..+1) vs. the smoothed "
+            "committed regime's own direction side (bull=+1 / neut=0 / bear=-1, "
+            "discrete). Divergence between the two flags moments the raw HMM posterior "
+            "and the smoothing/min_dwell logic disagree -- e.g. mid-transition, where "
+            "the HMM has already moved but commitment hasn't caught up yet."
+        )
+        # committed's index is a subset of dirpost's (cp.dropna() in run_nightly.py drops
+        # early rows where vol-layer inputs lag the direction posterior) -- reindex
+        # dirpost onto committed's index rather than the reverse, so this naturally
+        # restricts to dates where both series actually exist, no NaN-fill needed.
+        aligned_dirpost = dirpost.reindex(committed.index)
+        hmm_lean = aligned_dirpost["p_bull"] - aligned_dirpost["p_bear"]
+        direction_map = {"bull": 1, "neut": 0, "bear": -1}
+        committed_side = committed.map(lambda c: direction_map[c.split("_")[0]])
+        agreement_df = pd.DataFrame({"hmm_lean": hmm_lean, "committed_side": committed_side}).tail(252)
+        st.line_chart(agreement_df)
 
 
 def main():
