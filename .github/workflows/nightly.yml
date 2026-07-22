@@ -7,7 +7,14 @@ on:
 
 jobs:
   update:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, windows]
+    # Changed from ubuntu-latest 2026-07-22: CBOE's CDN returns 403 to GitHub-hosted
+    # runner IPs for VX futures settlement CSVs (confirmed via a direct reachability
+    # probe in pull_vx_curve -- see git history). Running on Nikolas's own Windows PC
+    # sidesteps the IP block, mirroring the yfinance-blocking workaround already in
+    # place for price pulls. Caveat: this PC must be on and awake at ~22:30 UTC on
+    # weekdays for the cron trigger to fire -- check Settings > System > Power & sleep,
+    # or set a Task Scheduler wake timer, if it's been going to sleep.
     steps:
       - uses: actions/checkout@v4
 
@@ -24,6 +31,12 @@ jobs:
         run: python -m pipeline.run_nightly
 
       - name: Commit outputs
+        shell: bash
+        # Explicit shell (2026-07-22): this step's `||` syntax needs bash or PowerShell
+        # 7+. Windows runners don't guarantee pwsh as the default shell, but Git for
+        # Windows (already installed, since git works from this PC's PowerShell) bundles
+        # Git Bash -- forcing it here avoids depending on which PowerShell version is on
+        # PATH.
         run: |
           git config user.name "regime-dashboard-bot"
           git config user.email "actions@users.noreply.github.com"
