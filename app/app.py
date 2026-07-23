@@ -439,12 +439,24 @@ def render_universe_treemap(state: dict, name_metadata: pd.DataFrame):
     )
     hover_data = {"net_delta": ":.2f", "direction": True, "cell_label": True,
                    "market_cap_display": True, "abs_net_delta": False}
+    # 2026-07-23: was textinfo="label+percent parent" -- misleading, since that number is
+    # each ticker's share of its OWN sector's box area, not its conviction. A 3-name
+    # sector (Energy) shows ~33% per name regardless of how strong the call actually is,
+    # while an 11-name sector (Technology) tops out near 12% even for its strongest
+    # names -- reads like Energy names are more convicted when that's just sector size.
+    # Show the actual signed net_delta on the box instead via texttemplate+customdata
+    # (built-in "value" field is abs_net_delta -- unsigned, same ambiguity problem, just
+    # without the sector-size distortion). Sector header nodes are synthesized by Plotly
+    # from the path hierarchy, not rows in df, so customdata isn't defined for them --
+    # they'll show just the sector name with a blank second line, which is fine.
+    df["net_delta_str"] = df["net_delta"].map(lambda v: f"{v:+.2f}")
 
     if color_mode == "Directional call (net_delta)":
         fig = px.treemap(
             df, path=path, values="abs_net_delta", color="net_delta",
             color_continuous_scale="RdYlGn", color_continuous_midpoint=0,
             range_color=[-NET_DELTA_CAP, NET_DELTA_CAP], hover_data=hover_data,
+            custom_data=["net_delta_str"],
         )
     else:
         discrete_map = {CELL_LABELS[k]: v for k, v in CELL_COLORS.items()}
@@ -452,10 +464,44 @@ def render_universe_treemap(state: dict, name_metadata: pd.DataFrame):
         fig = px.treemap(
             df, path=path, values="abs_net_delta", color="cell_label",
             color_discrete_map=discrete_map, hover_data=hover_data,
+            custom_data=["net_delta_str"],
         )
     fig.update_layout(margin=dict(t=8, l=8, r=8, b=8), height=520)
-    fig.update_traces(textinfo="label+percent parent")
+    fig.update_traces(texttemplate="%{label}<br>%{customdata[0]}")
     st.plotly_chart(fig, width="stretch")
+
+    # 2026-07-23: computed interpretation, not a static caption -- the useful read here
+    # (how much of "the book is Long" reflects genuine per-name confirmation vs. pure
+    # market-anchoring) isn't visible from either color mode alone; it only showed up by
+    # manually toggling between them and cross-referencing, which a new user won't know
+    # to do. Do that cross-reference in code instead and state the finding directly.
+    bull_cells, bear_cells = {"bull_hi", "bull_lo"}, {"bear_hi", "bear_lo"}
+    n_total = len(df)
+    n_long, n_short, n_flat = (df["direction"] == "Long").sum(), (df["direction"] == "Short").sum(), (df["direction"] == "Flat").sum()
+    long_unconfirmed = ((df["direction"] == "Long") & (~df["cell"].isin(bull_cells))).sum()
+    short_unconfirmed = ((df["direction"] == "Short") & (~df["cell"].isin(bear_cells))).sum()
+    market_cell_label = CELL_LABELS.get(market_cell, market_cell or "unknown")
+    conf_str = f"{posterior:.0%} posterior confidence" if posterior is not None else "confidence unavailable"
+
+    interp = (
+        f"**Reading this map**: market regime is **{market_cell_label}** ({conf_str}). "
+        f"**{n_long}/{n_total}** names are Long, **{n_short}/{n_total}** Short, **{n_flat}/{n_total}** Flat "
+        f"(net_delta thresholds of +/-0.05, same as the Portfolio tab)."
+    )
+    if n_long:
+        interp += (
+            f" Of the Long names, **{long_unconfirmed}** have their own regime cell still "
+            f"neutral or bearish -- they're Long mainly because the variant anchors to the "
+            f"market's {market_cell_label} call, not independent signal in that name. Only "
+            f"**{n_long - long_unconfirmed}** have genuine own-cell bullish confirmation "
+            f"(toggle 'Color by: Regime cell' above to see which)."
+        )
+    if n_short:
+        interp += (
+            f" Similarly, **{short_unconfirmed}/{n_short}** Short names are market-anchored "
+            f"rather than independently bearish."
+        )
+    st.markdown(interp)
 
     if not has_meta:
         st.caption(
@@ -474,10 +520,11 @@ def render_universe_treemap(state: dict, name_metadata: pd.DataFrame):
 def render_names_tab(state: dict, cfg: dict):
     st.subheader("Names")
     st.caption(
-        "Per-name regime cell, relative-strength signal, and recommended structure for "
-        "every ticker in the universe -- filter/sort the table below, then pick a name in "
-        "'Drill-down' for its price history, live option pricing, and forecast diagnostics. "
-        "Hover any column header for what that column means."
+        "Scan the whole universe here to decide which names deserve a closer look, then "
+        "pick one in 'Drill-down' below for price history, live option pricing, and "
+        "interactive forecast diagnostics. Sorted by |RS z (short)| by default -- most "
+        "statistically extreme names first -- or use the filters/column headers to sort "
+        "your own way. Hover any column header for what it means."
     )
     per_name = state.get("per_name", {})
     if not per_name:
@@ -504,6 +551,18 @@ def render_names_tab(state: dict, cfg: dict):
         for col in ["conditional_hist", "unconditional_hist"]:
             df[col] = df[col].apply(lambda x: list(x) if isinstance(x, (list, np.ndarray)) else [])
 
+        # 2026-07-23: plain-language read of ks_p/n_conditional, added alongside (not
+        # instead of) the raw numbers -- nobody can eyeball "ks_p=0.233" and know whether
+        # that's meaningful without already knowing what a KS test is. This is that
+        # judgment call made explicit and consistent, not a replacement for the raw stats.
+        def _support_label(row) -> str:
+            n = row.get("n_conditional")
+            if pd.isna(n) or n < 20:
+                return "Insufficient data"
+            return "Yes" if row.get("ks_p", 1.0) < 0.05 else "No"
+
+        df["historically_supported"] = df.apply(_support_label, axis=1)
+
     col1, col2 = st.columns(2)
     cell_filter = col1.multiselect(
         "Filter by cell", CELLS, default=[],
@@ -522,22 +581,27 @@ def render_names_tab(state: dict, cfg: dict):
         filtered = filtered[filtered["structure"].isin(structure_filter)]
 
     st.caption(
-        "This table shows the market-GATED cell per name (per-name tilt capped by the "
-        "market regime, per pipeline/tilt.py). A 'standalone' ungated view would need the "
-        "pre-gating tilt/vol series persisted per date -- not currently written by "
+        "Three groups of columns, left to right: **classification** (cell + raw RS "
+        "z-scores), **recommendation** (the live structure_matrix's actual output), and "
+        "**statistical validation** (does this cell historically mean anything for this "
+        "specific name). The market-GATED cell shown here is the name's own tilt capped "
+        "by the market regime (pipeline/tilt.py) -- an ungated 'standalone' view would "
+        "need the pre-gating series persisted per date, not currently written by "
         "run_nightly.py, so that toggle isn't built yet. Flagging rather than faking it."
     )
     if not fd.empty:
         st.caption(
-            "conditional_hist/unconditional_hist sparklines: forward-return distribution "
-            "given the name's current cell vs. its full unconditional history, same bin "
-            "edges for both (directly comparable shapes). effect_size_sd/ks_p from the "
-            "same KS-test/effect-size methodology as Phase 0's TEST 1c. Blank sparkline = "
-            "fewer than 20 matured observations in that cell so far."
+            "Validation columns: **Historically supported** is a plain-language read of "
+            "the two numbers next to it (Yes = KS p<0.05 with >=20 matured observations; "
+            "No = tested but not significant; Insufficient data = fewer than 20 "
+            "observations, don't trust it yet) -- check the raw effect size/p-value "
+            "yourself before relying on it. The two sparklines are the forward-return "
+            "distribution given this cell vs. this name's full unconditional history, "
+            "same bin edges for both (directly comparable shapes) -- same KS-test/effect-"
+            "size methodology as Phase 0's TEST 1c. Blank sparkline = insufficient data."
         )
     column_config = {
         "ticker": st.column_config.TextColumn("Ticker"),
-        "as_of": st.column_config.TextColumn("As of", help="Date this name's cell/recommendation was last computed."),
         "cell": st.column_config.TextColumn(
             "Cell", help="This name's regime cell -- its own relative-strength tilt, capped by "
                          "the market's committed regime (pipeline/tilt.py). Same 6 cells as "
@@ -580,14 +644,29 @@ def render_names_tab(state: dict, cfg: dict):
                  "is statistically distinguishable from the name's baseline; large = not "
                  "distinguishable given the sample size.",
         ),
+        "historically_supported": st.column_config.TextColumn(
+            "Historically supported?",
+            help="Plain-language read of effect size/KS p-value: Yes = statistically "
+                 "significant (p<0.05) with >=20 matured observations; No = tested but "
+                 "not significant; Insufficient data = fewer than 20 observations so far, "
+                 "don't trust it yet. Always check the raw numbers too.",
+        ),
     }
+    # Explicit order groups the three zones from the caption above (classification |
+    # recommendation | validation) and drops as_of -- it duplicates the header's
+    # freshness badge and added width without new information in this table specifically.
+    column_order = ["ticker", "cell", "rs_z_short", "rs_z_long", "structure"]
+    if not fd.empty:
+        column_order += ["historically_supported", "effect_size_sd", "ks_p",
+                          "conditional_hist", "unconditional_hist"]
 
     # Default sort by |rs_z_short| descending rather than ticker alphabetical -- surfaces
     # the most statistically extreme names first regardless of direction. The table's
     # column headers are still natively clickable to re-sort any other way.
     display_df = filtered.assign(_abs_rs=filtered["rs_z_short"].abs()) \
         .sort_values("_abs_rs", ascending=False).drop(columns="_abs_rs")
-    st.dataframe(display_df, width="stretch", hide_index=True, column_config=column_config)
+    st.dataframe(display_df, width="stretch", hide_index=True, column_config=column_config,
+                 column_order=column_order)
 
     st.divider()
     st.subheader("Drill-down")
