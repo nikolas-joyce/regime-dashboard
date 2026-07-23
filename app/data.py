@@ -97,6 +97,20 @@ def load_forecast_density() -> pd.DataFrame:
     return pd.read_parquet(path)
 
 
+@st.cache_data(ttl=3600)
+def load_name_metadata() -> pd.DataFrame:
+    """Market cap + sector/industry per name (pipeline/fetch_name_metadata.py, run
+    manually/occasionally -- NOT part of the nightly Action, see that script's docstring
+    for why). Longer TTL than the other precomputed loaders (1hr vs. 5min) since this
+    data is refreshed on a much slower cadence than the nightly model outputs. Returns
+    empty if the file doesn't exist yet (before the first manual run of that script) --
+    callers (the universe treemap) degrade to a flat, ungrouped layout in that case."""
+    path = DATA_DIR / "name_metadata.parquet"
+    if not path.exists():
+        return pd.DataFrame()
+    return pd.read_parquet(path)
+
+
 def name_cell_history(ticker: str) -> pd.Series:
     """Single name's cell history as a Date-indexed Series (subset of load_name_cells)."""
     nc = load_name_cells()

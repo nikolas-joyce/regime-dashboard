@@ -1,0 +1,3 @@
+ticker,n_trades,matrix_sharpe,matrix_premium_sharpe,variant_sharpe,qqq_pure_sharpe,variant2_sharpe,buyhold_sharpe_true_daily,variant_vs_buyhold
+SPY,729,,,1.2025141550485086,,,0.6399093274392261,0.5626048276092824
+QQQ,729,,,1.4782692126056516,0.8338261181957506,,0.7626561388096796,0.7156130737959719

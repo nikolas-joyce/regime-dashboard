@@ -54,6 +54,40 @@ def exit_probability(current_cell: str, matrix: pd.DataFrame) -> float:
     return float(1.0 - probs.get(current_cell, 0.0))
 
 
+def transition_counts(committed: pd.Series) -> pd.Series:
+    """Sample size behind each row of empirical_transition_matrix(): total number of
+    (today, tomorrow) day-pairs observed starting FROM each cell -- i.e. total days
+    historically spent in that cell (every day contributes one pair whether the regime
+    stayed or switched the next day). NOT the number of distinct switch events, which
+    would be far smaller. empirical_transition_matrix() normalizes these counts away, so
+    without this a probability from 400 observed days and one from 12 look identical
+    (2026-07-23, added after exactly that question came up for a rare cell)."""
+    s = committed.dropna()
+    if len(s) < 2:
+        return pd.Series(0, index=CELLS)
+    today = pd.Series(s.values[:-1])
+    return today.value_counts().reindex(CELLS, fill_value=0)
+
+
+def wilson_interval(k: float, n: float, z: float = 1.96) -> tuple[float, float]:
+    """Wilson score confidence interval for a binomial proportion k/n (default z=1.96,
+    ~95%). Used per-cell as a standard approximation to the true multinomial confidence
+    region (each TO-cell treated as its own binary outcome vs. the same n) -- a
+    simplification, not exact joint inference, but fine for a diagnostic display. Chosen
+    over a normal/Wald interval because it doesn't produce nonsensical bounds (below 0%
+    or above 100%) near p=0 or p=1, which is common here: sticky regimes routinely push
+    "stay" probabilities near 1.0 and rare-transition probabilities near 0.0.
+    Returns (nan, nan) if n<=0.
+    """
+    if n <= 0:
+        return float("nan"), float("nan")
+    p = k / n
+    denom = 1 + z ** 2 / n
+    center = (p + z ** 2 / (2 * n)) / denom
+    half_width = (z * np.sqrt(p * (1 - p) / n + z ** 2 / (4 * n ** 2))) / denom
+    return max(0.0, center - half_width), min(1.0, center + half_width)
+
+
 def regime_runs(committed: pd.Series) -> pd.DataFrame:
     """Collapse a daily committed-regime series into (regime, start, end, duration_days)
     runs -- one row per contiguous stay in a regime. Used for both the duration-

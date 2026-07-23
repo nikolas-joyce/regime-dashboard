@@ -231,18 +231,33 @@ def build_feature_frame(prices: pd.DataFrame, vx: pd.DataFrame) -> pd.DataFrame:
     feat["slope"] = (vx_aligned["VX3"] - vx_aligned["VX1"]) / vx_aligned["VX1"]
     feat["slope_z"] = (feat["slope"] - feat["slope"].rolling(252).mean()) / feat["slope"].rolling(252).std()
     feat["backwardation"] = (feat["slope"] < 0).astype(float)
-    # Match the validated notebook's guarantee (research/regime_dashboard_step0_validation.ipynb,
-    # feature-construction cell): drop any row missing slope_z/vix_pct/rv_pct, not just ret/rv20.
-    # The notebook's raw price+VX-curve frame comes from an INNER JOIN (px.join(vx, how="inner")),
-    # so it never has a leading-NaN-slope window to begin with; ffill() here can't back-fill dates
-    # before VX curve history starts, so without this the model layer gets handed rows where
-    # slope_z is NaN. That silently broke two things in the first live Phase 1 run: an all-NaN
-    # cp row crashing commit_regime's idxmax, and NaN contaminating the drift model's regression
-    # matrix for the entire series (see model.py fixes, same date). Fixing it at the source here
-    # is the correct match to validated methodology; the two downstream fixes remain as
-    # defensive belt-and-suspenders, not the primary guard.
-    subset = [c for c in ["ret", "rv20", "slope_z", "rv_pct", "vix_pct"] if c in feat.columns]
-    return feat.dropna(subset=subset)
+    # 2026-07-22: split this dropna instead of coupling ALL five columns together.
+    #
+    # Originally this dropped any row missing slope_z/vix_pct/rv_pct alongside ret/rv20
+    # (to match the validated notebook's inner-joined price+VX-curve frame, and to stop
+    # an all-NaN cp row from crashing commit_regime's idxmax / contaminating the drift
+    # model's regression matrix -- see the two downstream defensive fixes still in
+    # model.py). But it had a side effect nobody caught until
+    # research/plot_conviction_over_time.py's gap-report diagnostic surfaced it: the
+    # direction engine (model.py walk_forward_direction) only ever consumes feat["ret"],
+    # which needs nothing from the VX curve -- yet coupling slope_z/vix_pct into the same
+    # dropna meant every VX-curve coverage hole (vix-utils/CBOE gaps, see pull_vx_curve;
+    # task #17 tracks a real fetcher fix) silently deleted `ret` for those same dates too,
+    # starving the direction posterior of return data it never needed to lose. Confirmed:
+    # dirpost.parquet and cell_posterior.parquet carried IDENTICAL gaps -- 646d
+    # (2020-03-16 to 2021-12-22) and 372d (2023-03-14 to 2024-03-20), ~2.8yr combined --
+    # despite dirpost's math having no VX-curve dependency at all.
+    #
+    # Fix: only drop rows missing the DIRECTION-side inputs (ret, rv20, rv_pct -- all pure
+    # SPY-return-derived, no VX curve involved). VX-curve-derived columns (slope_z,
+    # vix_pct, backwardation) are left NaN through real coverage gaps; run_nightly.py
+    # already has its own explicit, logged dropna for those downstream (cp.dropna(how=
+    # "any"), see the comment there) and curve_conditioned_drift_posterior() already masks
+    # NaN slope_z out of its regression internally -- both were built to handle exactly
+    # this NaN case gracefully, they just never got the chance to because feat was pruning
+    # it away first.
+    direction_subset = [c for c in ["ret", "rv20", "rv_pct"] if c in feat.columns]
+    return feat.dropna(subset=direction_subset)
 
 
 def _fetch_one_chain_snapshot(
