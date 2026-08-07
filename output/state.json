@@ -2,14 +2,14 @@
   "as_of": "2026-05-22",
   "data_source": "yfinance",
   "market_regime": "bull_lo",
-  "posterior": 0.9199445254231465,
+  "posterior": 0.9248257468381781,
   "hmm_diagnostics": {
     "n_refit": 70,
     "n_below_z_thresh": 70,
-    "median_z_separation": 0.8775133303243486
+    "median_z_separation": 0.8775238742988121
   },
-  "drift_p_up_latest": 0.5407547445811838,
-  "curve_beta_latest": 0.0004802307173299077,
+  "drift_p_up_latest": 0.5407547838910589,
+  "curve_beta_latest": 0.00048023183186544596,
   "recommendation": {
     "structure": "bull_call_debit_spread",
     "legs": [
@@ -29,8 +29,8 @@
     "AAPL": {
       "as_of": "2026-05-22",
       "cell": "bull_lo",
-      "rs_z_short": 1.2243524890829844,
-      "rs_z_long": 0.5423830385967416,
+      "rs_z_short": 1.2243523511928884,
+      "rs_z_long": 0.5423830180467265,
       "recommendation": {
         "structure": "bull_call_debit_spread",
         "legs": [
@@ -50,8 +50,8 @@
     "MSFT": {
       "as_of": "2026-05-22",
       "cell": "neut_hi",
-      "rs_z_short": -0.3413402315999625,
-      "rs_z_long": 0.39644708245302407,
+      "rs_z_short": -0.3413402178353429,
+      "rs_z_long": 0.3964470758020374,
       "recommendation": {
         "structure": "wide_bull_put_credit_spread",
         "legs": [
@@ -71,8 +71,8 @@
     "NVDA": {
       "as_of": "2026-05-22",
       "cell": "neut_hi",
-      "rs_z_short": -0.04066080727092642,
-      "rs_z_long": -0.42591057204650706,
+      "rs_z_short": -0.0406607599157995,
+      "rs_z_long": -0.42590988502877564,
       "recommendation": {
         "structure": "wide_bull_put_credit_spread",
         "legs": [
@@ -92,8 +92,8 @@
     "AMZN": {
       "as_of": "2026-05-22",
       "cell": "bull_lo",
-      "rs_z_short": -0.1795351376416809,
-      "rs_z_long": 2.3164833384758508,
+      "rs_z_short": -0.17953510321230048,
+      "rs_z_long": 2.3164831762276203,
       "recommendation": {
         "structure": "bull_call_debit_spread",
         "legs": [
@@ -113,8 +113,8 @@
     "GOOGL": {
       "as_of": "2026-05-22",
       "cell": "neut_hi",
-      "rs_z_short": 0.2858387196344494,
-      "rs_z_long": -0.07513296119867793,
+      "rs_z_short": 0.28583882775066727,
+      "rs_z_long": -0.07513295391350239,
       "recommendation": {
         "structure": "wide_bull_put_credit_spread",
         "legs": [
@@ -134,8 +134,8 @@
     "META": {
       "as_of": "2026-05-22",
       "cell": "neut_lo",
-      "rs_z_short": -1.4690749009139124,
-      "rs_z_long": -0.7694869161188935,
+      "rs_z_short": -1.4690751187397981,
+      "rs_z_long": -0.7694869684694852,
       "recommendation": {
         "structure": "no_trade",
         "legs": []
@@ -144,8 +144,8 @@
     "JPM": {
       "as_of": "2026-05-22",
       "cell": "neut_hi",
-      "rs_z_short": -1.6051211151741787,
-      "rs_z_long": -1.2354070742300283,
+      "rs_z_short": -1.6051206466341637,
+      "rs_z_long": -1.2354049500068327,
       "recommendation": {
         "structure": "wide_bull_put_credit_spread",
         "legs": [
@@ -165,8 +165,8 @@
     "BAC": {
       "as_of": "2026-05-22",
       "cell": "neut_lo",
-      "rs_z_short": -1.261856267682939,
-      "rs_z_long": -1.2819473025606054,
+      "rs_z_short": -1.2618561869893794,
+      "rs_z_long": -1.2819471605734911,
       "recommendation": {
         "structure": "no_trade",
         "legs": []
@@ -175,8 +175,8 @@
     "XOM": {
       "as_of": "2026-05-22",
       "cell": "neut_hi",
-      "rs_z_short": -0.30720308920368783,
-      "rs_z_long": -0.6856650004416904,
+      "rs_z_short": -0.3072030314078824,
+      "rs_z_long": -0.6856649827975733,
       "recommendation": {
         "structure": "wide_bull_put_credit_spread",
         "legs": [
@@ -196,8 +196,8 @@
     "CVX": {
       "as_of": "2026-05-22",
       "cell": "neut_hi",
-      "rs_z_short": -0.3752467752890326,
-      "rs_z_long": -0.5053986517651847,
+      "rs_z_short": -0.3752467659759197,
+      "rs_z_long": -0.5053986900054072,
       "recommendation": {
         "structure": "wide_bull_put_credit_spread",
         "legs": [
@@ -217,8 +217,8 @@
     "UNH": {
       "as_of": "2026-05-22",
       "cell": "bull_lo",
-      "rs_z_short": 0.4005872684868356,
-      "rs_z_long": 1.33433435462471,
+      "rs_z_short": 0.4005872413950424,
+      "rs_z_long": 1.3343342637909825,
       "recommendation": {
         "structure": "bull_call_debit_spread",
         "legs": [
@@ -238,8 +238,8 @@
     "JNJ": {
       "as_of": "2026-05-22",
       "cell": "neut_hi",
-      "rs_z_short": -0.6827413385235473,
-      "rs_z_long": -1.6612026263659294,
+      "rs_z_short": -0.6827411958220322,
+      "rs_z_long": -1.661201843737018,
       "recommendation": {
         "structure": "wide_bull_put_credit_spread",
         "legs": [
@@ -259,8 +259,8 @@
     "V": {
       "as_of": "2026-05-22",
       "cell": "bull_hi",
-      "rs_z_short": 1.1413190733715002,
-      "rs_z_long": 1.217437911542478,
+      "rs_z_short": 1.1413194987324307,
+      "rs_z_long": 1.2174383962441748,
       "recommendation": {
         "structure": "short_put",
         "legs": [
@@ -275,8 +275,8 @@
     "MA": {
       "as_of": "2026-05-22",
       "cell": "neut_hi",
-      "rs_z_short": -0.6690653356294558,
-      "rs_z_long": -0.2703322011452913,
+      "rs_z_short": -0.6690653794232423,
+      "rs_z_long": -0.2703322484232045,
       "recommendation": {
         "structure": "wide_bull_put_credit_spread",
         "legs": [
@@ -296,8 +296,8 @@
     "PG": {
       "as_of": "2026-05-22",
       "cell": "neut_hi",
-      "rs_z_short": -0.449016496326556,
-      "rs_z_long": -1.6043545650604987,
+      "rs_z_short": -0.4490165182895595,
+      "rs_z_long": -1.604354700962106,
       "recommendation": {
         "structure": "wide_bull_put_credit_spread",
         "legs": [
@@ -317,8 +317,8 @@
     "KO": {
       "as_of": "2026-05-22",
       "cell": "neut_hi",
-      "rs_z_short": 0.46382336409699026,
-      "rs_z_long": -0.4931978958838813,
+      "rs_z_short": 0.46382341154522727,
+      "rs_z_long": -0.49319795753867035,
       "recommendation": {
         "structure": "wide_bull_put_credit_spread",
         "legs": [
@@ -338,8 +338,8 @@
     "HD": {
       "as_of": "2026-05-22",
       "cell": "neut_hi",
-      "rs_z_short": -1.580321230924019,
-      "rs_z_long": -2.0973720109949383,
+      "rs_z_short": -1.5803213312336146,
+      "rs_z_long": -2.0973723096424477,
       "recommendation": {
         "structure": "wide_bull_put_credit_spread",
         "legs": [
@@ -359,8 +359,8 @@
     "DIS": {
       "as_of": "2026-05-22",
       "cell": "neut_hi",
-      "rs_z_short": -0.739453640276487,
-      "rs_z_long": -0.6234864974672054,
+      "rs_z_short": -0.7394537691521373,
+      "rs_z_long": -0.6234865353037584,
       "recommendation": {
         "structure": "wide_bull_put_credit_spread",
         "legs": [
@@ -380,8 +380,8 @@
     "CSCO": {
       "as_of": "2026-05-22",
       "cell": "bull_hi",
-      "rs_z_short": 3.750664386806334,
-      "rs_z_long": 3.9079177580665947,
+      "rs_z_short": 3.7506645155234684,
+      "rs_z_long": 3.9079183303937417,
       "recommendation": {
         "structure": "short_put",
         "legs": [
@@ -396,8 +396,8 @@
     "WMT": {
       "as_of": "2026-05-22",
       "cell": "neut_hi",
-      "rs_z_short": -2.7095112216916273,
-      "rs_z_long": -1.773211331329532,
+      "rs_z_short": -2.709510578153504,
+      "rs_z_long": -1.773211416860501,
       "recommendation": {
         "structure": "wide_bull_put_credit_spread",
         "legs": [
@@ -417,8 +417,8 @@
     "WFC": {
       "as_of": "2026-05-22",
       "cell": "neut_lo",
-      "rs_z_short": -1.3229915225740023,
-      "rs_z_long": -1.9502928546443254,
+      "rs_z_short": -1.322991208098586,
+      "rs_z_long": -1.9502926398481355,
       "recommendation": {
         "structure": "no_trade",
         "legs": []
@@ -427,8 +427,8 @@
     "GS": {
       "as_of": "2026-05-22",
       "cell": "neut_hi",
-      "rs_z_short": -0.08552890015341598,
-      "rs_z_long": -0.5447442482151571,
+      "rs_z_short": -0.0855288808235346,
+      "rs_z_long": -0.5447451392949693,
       "recommendation": {
         "structure": "wide_bull_put_credit_spread",
         "legs": [
@@ -448,8 +448,8 @@
     "MS": {
       "as_of": "2026-05-22",
       "cell": "neut_lo",
-      "rs_z_short": -0.005933772404861631,
-      "rs_z_long": 0.9334557369763142,
+      "rs_z_short": -0.005933712980426,
+      "rs_z_long": 0.9334536974250464,
       "recommendation": {
         "structure": "no_trade",
         "legs": []
@@ -458,8 +458,8 @@
     "C": {
       "as_of": "2026-05-22",
       "cell": "neut_lo",
-      "rs_z_short": -1.654449845955458,
-      "rs_z_long": -0.6834662916961728,
+      "rs_z_short": -1.6544498286899174,
+      "rs_z_long": -0.6834663226539704,
       "recommendation": {
         "structure": "no_trade",
         "legs": []
@@ -468,8 +468,8 @@
     "SCHW": {
       "as_of": "2026-05-22",
       "cell": "neut_hi",
-      "rs_z_short": -0.3605358996498105,
-      "rs_z_long": -1.3783677545575217,
+      "rs_z_short": -0.36053588960878663,
+      "rs_z_long": -1.3783678520063347,
       "recommendation": {
         "structure": "wide_bull_put_credit_spread",
         "legs": [
@@ -489,8 +489,8 @@
     "LLY": {
       "as_of": "2026-05-22",
       "cell": "neut_hi",
-      "rs_z_short": 1.0081673677116243,
-      "rs_z_long": -0.3777102359975973,
+      "rs_z_short": 1.0081672618233362,
+      "rs_z_long": -0.3777102341179633,
       "recommendation": {
         "structure": "wide_bull_put_credit_spread",
         "legs": [
@@ -510,8 +510,8 @@
     "ABBV": {
       "as_of": "2026-05-22",
       "cell": "neut_lo",
-      "rs_z_short": 0.5390946073808475,
-      "rs_z_long": -1.3048415530225357,
+      "rs_z_short": 0.5390946473603236,
+      "rs_z_long": -1.3048414379816091,
       "recommendation": {
         "structure": "no_trade",
         "legs": []
@@ -520,8 +520,8 @@
     "MRK": {
       "as_of": "2026-05-22",
       "cell": "neut_hi",
-      "rs_z_short": 0.05251779268307305,
-      "rs_z_long": -0.8447682798737733,
+      "rs_z_short": 0.05251780101647499,
+      "rs_z_long": -0.8447682359357618,
       "recommendation": {
         "structure": "wide_bull_put_credit_spread",
         "legs": [
@@ -541,8 +541,8 @@
     "PFE": {
       "as_of": "2026-05-22",
       "cell": "neut_lo",
-      "rs_z_short": -0.9757989585025642,
-      "rs_z_long": -1.3740890830050438,
+      "rs_z_short": -0.975799022001444,
+      "rs_z_long": -1.374089185753364,
       "recommendation": {
         "structure": "no_trade",
         "legs": []
@@ -551,8 +551,8 @@
     "TMO": {
       "as_of": "2026-05-22",
       "cell": "neut_lo",
-      "rs_z_short": -0.8431974425360828,
-      "rs_z_long": -1.1191099606400985,
+      "rs_z_short": -0.8431973592372639,
+      "rs_z_long": -1.119109128744005,
       "recommendation": {
         "structure": "no_trade",
         "legs": []
@@ -561,8 +561,8 @@
     "CAT": {
       "as_of": "2026-05-22",
       "cell": "neut_hi",
-      "rs_z_short": -0.9837402865171242,
-      "rs_z_long": -1.3274033196498407,
+      "rs_z_short": -0.9837401721208967,
+      "rs_z_long": -1.3274032171025192,
       "recommendation": {
         "structure": "wide_bull_put_credit_spread",
         "legs": [
@@ -582,8 +582,8 @@
     "HON": {
       "as_of": "2026-05-22",
       "cell": "neut_hi",
-      "rs_z_short": 0.4136963324977626,
-      "rs_z_long": -1.0085070876223223,
+      "rs_z_short": 0.4136963764103938,
+      "rs_z_long": -1.0085071031701582,
       "recommendation": {
         "structure": "wide_bull_put_credit_spread",
         "legs": [
@@ -603,8 +603,8 @@
     "RTX": {
       "as_of": "2026-05-22",
       "cell": "neut_lo",
-      "rs_z_short": -0.8897684157426277,
-      "rs_z_long": -2.894243447985122,
+      "rs_z_short": -0.8897683973471218,
+      "rs_z_long": -2.8942435434191895,
       "recommendation": {
         "structure": "no_trade",
         "legs": []
@@ -613,8 +613,8 @@
     "BA": {
       "as_of": "2026-05-22",
       "cell": "neut_hi",
-      "rs_z_short": -1.360806902130846,
-      "rs_z_long": -1.063854523033615,
+      "rs_z_short": -1.3608069945651478,
+      "rs_z_long": -1.0638545885514619,
       "recommendation": {
         "structure": "wide_bull_put_credit_spread",
         "legs": [
@@ -634,8 +634,8 @@
     "NKE": {
       "as_of": "2026-05-22",
       "cell": "neut_lo",
-      "rs_z_short": -0.08407778087213791,
-      "rs_z_long": -1.7919480723243728,
+      "rs_z_short": -0.08407774837564998,
+      "rs_z_long": -1.79194815664548,
       "recommendation": {
         "structure": "no_trade",
         "legs": []
@@ -644,8 +644,8 @@
     "MCD": {
       "as_of": "2026-05-22",
       "cell": "neut_hi",
-      "rs_z_short": -1.4413597660660689,
-      "rs_z_long": -2.3112468611696064,
+      "rs_z_short": -1.4413598269908239,
+      "rs_z_long": -2.3112468597809257,
       "recommendation": {
         "structure": "wide_bull_put_credit_spread",
         "legs": [
@@ -665,8 +665,8 @@
     "SBUX": {
       "as_of": "2026-05-22",
       "cell": "neut_hi",
-      "rs_z_short": -0.15821801514846476,
-      "rs_z_long": 0.2497455857519261,
+      "rs_z_short": -0.1582179692335174,
+      "rs_z_long": 0.24974559208881825,
       "recommendation": {
         "structure": "wide_bull_put_credit_spread",
         "legs": [
@@ -686,8 +686,8 @@
     "LOW": {
       "as_of": "2026-05-22",
       "cell": "neut_hi",
-      "rs_z_short": -2.0808996716381873,
-      "rs_z_long": -2.4855263638334635,
+      "rs_z_short": -2.0808998553911686,
+      "rs_z_long": -2.4855265570348464,
       "recommendation": {
         "structure": "wide_bull_put_credit_spread",
         "legs": [
@@ -707,8 +707,8 @@
     "TGT": {
       "as_of": "2026-05-22",
       "cell": "neut_hi",
-      "rs_z_short": -1.098372440008537,
-      "rs_z_long": 0.13411824995382066,
+      "rs_z_short": -1.0983724575536475,
+      "rs_z_long": 0.13411826527626455,
       "recommendation": {
         "structure": "wide_bull_put_credit_spread",
         "legs": [
@@ -728,8 +728,8 @@
     "PEP": {
       "as_of": "2026-05-22",
       "cell": "neut_hi",
-      "rs_z_short": -1.1566778292200461,
-      "rs_z_long": -1.6003776507190126,
+      "rs_z_short": -1.1566774893102578,
+      "rs_z_long": -1.6003773573025724,
       "recommendation": {
         "structure": "wide_bull_put_credit_spread",
         "legs": [
@@ -749,8 +749,8 @@
     "COST": {
       "as_of": "2026-05-22",
       "cell": "neut_hi",
-      "rs_z_short": -0.28773557405756767,
-      "rs_z_long": -0.012614205840259797,
+      "rs_z_short": -0.2877366093216018,
+      "rs_z_long": -0.012614217146324087,
       "recommendation": {
         "structure": "wide_bull_put_credit_spread",
         "legs": [
@@ -770,8 +770,8 @@
     "ADBE": {
       "as_of": "2026-05-22",
       "cell": "bull_hi",
-      "rs_z_short": 0.44029817768059293,
-      "rs_z_long": 0.8514031717292843,
+      "rs_z_short": 0.44029828826322726,
+      "rs_z_long": 0.8514031544996651,
       "recommendation": {
         "structure": "short_put",
         "legs": [
@@ -786,8 +786,8 @@
     "CRM": {
       "as_of": "2026-05-22",
       "cell": "bull_hi",
-      "rs_z_short": 0.5080856795038732,
-      "rs_z_long": 0.7425822591268523,
+      "rs_z_short": 0.5080857418438208,
+      "rs_z_long": 0.742582227929299,
       "recommendation": {
         "structure": "short_put",
         "legs": [
@@ -802,8 +802,8 @@
     "AVGO": {
       "as_of": "2026-05-22",
       "cell": "neut_lo",
-      "rs_z_short": -1.2652081440954666,
-      "rs_z_long": 0.19719150968180618,
+      "rs_z_short": -1.265208228867702,
+      "rs_z_long": 0.19719149679288564,
       "recommendation": {
         "structure": "no_trade",
         "legs": []
@@ -812,8 +812,8 @@
     "QCOM": {
       "as_of": "2026-05-22",
       "cell": "bull_hi",
-      "rs_z_short": 4.452971411757813,
-      "rs_z_long": 3.561708290899787,
+      "rs_z_short": 4.452971473527536,
+      "rs_z_long": 3.561708250765744,
       "recommendation": {
         "structure": "short_put",
         "legs": [
@@ -828,8 +828,8 @@
     "NFLX": {
       "as_of": "2026-05-22",
       "cell": "neut_lo",
-      "rs_z_short": -0.533306868517119,
-      "rs_z_long": 0.7640218400394891,
+      "rs_z_short": -0.5333068484851448,
+      "rs_z_long": 0.7640218393572544,
       "recommendation": {
         "structure": "no_trade",
         "legs": []
@@ -838,8 +838,8 @@
     "AMD": {
       "as_of": "2026-05-22",
       "cell": "bull_hi",
-      "rs_z_short": 1.5203743050702097,
-      "rs_z_long": 2.875423995280792,
+      "rs_z_short": 1.5203743011347746,
+      "rs_z_long": 2.875423962348812,
       "recommendation": {
         "structure": "short_put",
         "legs": [
@@ -854,8 +854,8 @@
     "COP": {
       "as_of": "2026-05-22",
       "cell": "neut_hi",
-      "rs_z_short": -0.9082671876781496,
-      "rs_z_long": -0.07310994318846512,
+      "rs_z_short": -0.9082671728711567,
+      "rs_z_long": -0.07310997309818909,
       "recommendation": {
         "structure": "wide_bull_put_credit_spread",
         "legs": [
@@ -875,8 +875,8 @@
     "VZ": {
       "as_of": "2026-05-22",
       "cell": "neut_lo",
-      "rs_z_short": -0.2141642575636159,
-      "rs_z_long": -0.6668946306629348,
+      "rs_z_short": -0.21416423085189795,
+      "rs_z_long": -0.6668946233145836,
       "recommendation": {
         "structure": "no_trade",
         "legs": []
@@ -885,8 +885,8 @@
     "LIN": {
       "as_of": "2026-05-22",
       "cell": "neut_hi",
-      "rs_z_short": -0.35959953860426025,
-      "rs_z_long": -0.17324890025170425,
+      "rs_z_short": -0.3595995288395504,
+      "rs_z_long": -0.17324895226148668,
       "recommendation": {
         "structure": "wide_bull_put_credit_spread",
         "legs": [
